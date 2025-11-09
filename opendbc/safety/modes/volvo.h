@@ -4,63 +4,73 @@
 
 // Volvo CMA platform CAN message addresses
 #define VOLVO_LCA_STEER           88U    // TX from VCU1 to PSCM, LCA steering command (0x58)
-#define VOLVO_BCM2_SPEED          103U   // RX from BCM, vehicle speed
+#define VOLVO_BUS1_SPEED          112U   // RX from BCM, vehicle speed (BUS1_SPEED)
 #define VOLVO_BCM2                105U   // RX from BCM, brake pedal, cruise state
 #define VOLVO_SAS                 85U    // RX from SAS, steering angle sensor
 #define VOLVO_PSCM                22U    // RX from PSCM, driver steering input
 #define VOLVO_GEAR_POSITION       128U   // RX from transmission, gear position
-#define VOLVO_ECM_1               0x250
+#define VOLVO_ECM_1               592U   // RX from ECM, accelerator pedal position (0x250)
 
 // CAN bus definitions for Volvo CMA platform
-#define VOLVO_VCU1_BUS    0U  // VCU1 bus (where LCA originates)
-#define VOLVO_PT_BUS      1U  // Front 1 CAN bus (where ECM is)
-#define VOLVO_PSCM_BUS    2U  // PSCM bus (BCM2, SAS, EGSM, where LCA is sent to)
+// Using same naming as carstate.py for consistency: main, pt, party
+#define VOLVO_MAIN_BUS    0U  // Bus.main - VCU1 car side
+#define VOLVO_PT_BUS      1U  // Bus.pt - VCU1 ECM side (where ECM is)
+#define VOLVO_PARTY_BUS   2U  // Bus.party - VCU PSCM/BCM2 side (BCM2, SAS, EGSM, PSCM, where LCA is sent to)
 
 static void volvo_rx_hook(const CANPacket_t *msg) {
   // Basic vehicle state monitoring - very relaxed implementation
 
-  // VCU1 bus (bus 0) messages
-  if (msg->bus == VOLVO_VCU1_BUS) {
-    // Gear position comes from VCU1 bus
+  // Main bus (bus 0) messages
+  if (msg->bus == VOLVO_MAIN_BUS) {
+    // Gear position comes from main bus
     if (msg->addr == VOLVO_GEAR_POSITION) {
       // Signal: GEAR_POSITION (0: Park, 1: Reverse, 2: Neutral, 3: Drive)
       // This is used by carstate.py for gear shifter state
     }
   }
 
+  // PT bus (bus 1) messages
   if (msg->bus == VOLVO_PT_BUS) {
     if (msg->addr == VOLVO_ECM_1) {
-      // Gas pedal position
+      // Gas pedal position - ACCELERATOR_PEDAL_POS
+      // DBC: SG_ ACCELERATOR_PEDAL_POS : 31|8@0+ (1,0) [0|255]
+      // carstate.py: > 20+1 (20 baseline + 1 tolerance)
       int gas_pedal_position = msg->data[3];
-      gas_pressed = gas_pedal_position > 20+2; // 20 baseline + 2 tolerance
+      gas_pressed = gas_pedal_position > 20+1; // Match carstate.py tolerance
     }
   }
 
-  // PSCM bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
-  if (msg->bus == VOLVO_PSCM_BUS) {
-    // Update vehicle speed from BCM2_SPEED
-    if (msg->addr == VOLVO_BCM2_SPEED) {
-      // Signal: SPEED (0.01 m/s per bit)
-      uint16_t speed_raw = ((msg->data[4] & 0x1F) << 7) | ((msg->data[5] & 0xFE) >> 1);      vehicle_moving = speed_raw > 10; // > 0.1 m/s
-      UPDATE_VEHICLE_SPEED(speed_raw * 0.01);
+  // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
+  if (msg->bus == VOLVO_PARTY_BUS) {
+    // Update vehicle speed from BUS1_SPEED
+    if (msg->addr == VOLVO_BUS1_SPEED) {
+      // Signal: BUS1_SPEED (0.015625 m/s per bit)
+      // DBC: SG_ BUS1_SPEED : 23|16@0+ (0.015625,0) [0|65535] "m/s"
+      uint16_t speed_raw = ((msg->data[2] & 0xFFU) << 8) | msg->data[3];
+      vehicle_moving = speed_raw > 6; // > 0.09375 m/s (approx 0.1 m/s)
+      UPDATE_VEHICLE_SPEED(speed_raw * 0.015625);
     }
 
-    // Update brake pedal state from BCM2
+    // Update brake pedal and cruise state from BCM2
     if (msg->addr == VOLVO_BCM2) {
-      // Signals: BRAKE_PEDAL_PRESSED_A, BRAKE_PEDAL_PRESSED_B
-      bool brake_a = (msg->data[5] >> 7) & 1U; // Active low
-      bool brake_b = (msg->data[5] >> 6) & 1U;
-      brake_pressed = !brake_a || brake_b;
+      // DBC: SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) - inverted in DBC, so we invert raw bit
+      // DBC: SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) - not inverted
+      // carstate.py reads brake from cp_party (Bus.party)
+      bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
+      bool brake_b = (msg->data[5] >> 6) & 1U; // Raw bit, active high
+      brake_pressed = brake_a || brake_b;
 
-      // Signal: CRUISE_OR_PILOT_ASSIST_ENGAGED (also on PSCM bus)
+      // DBC: SG_ CRUISE_OR_PILOT_ASSIST_ENGAGED : 12|1@0+ (1,0)
+      // carstate.py reads cruise state from cp (Bus.main) - but BCM2 is on party bus
       bool cruise_engaged = (msg->data[1] >> 4) & 1U;
-      //controls_allowed = cruise_engaged;
       pcm_cruise_check(cruise_engaged);
     }
 
     // Update steering angle from SAS
     if (msg->addr == VOLVO_SAS) {
-      // Signal: SAS_ANGLE_SENSOR (-0.05596 deg per bit)
+      // DBC: SG_ SAS_ANGLE_SENSOR : 6|15@0- (-0.05596,0)
+      // carstate.py uses SAS (not PSCM) for steering angle
+      // Bit position 6, 15 bits, signed, little endian
       int angle_raw = ((msg->data[0] & 0x7FU) << 8) | msg->data[1];
       if (msg->data[0] & 0x80U) {
         angle_raw = -angle_raw;
@@ -70,7 +80,9 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
     // Update driver steering input from PSCM
     if (msg->addr == VOLVO_PSCM) {
-      // Signal: DRIVER_INPUT_DEVIATION
+      // DBC: SG_ DRIVER_INPUT_DEVIATION : 47|8@0- (1,0)
+      // carstate.py uses abs(DRIVER_INPUT_DEVIATION) for steering torque and pressed detection
+      // Bit position 47, 8 bits, signed
       int driver_input = msg->data[5];
       update_sample(&torque_driver, driver_input);
     }
@@ -82,9 +94,9 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
 
   // Very relaxed safety policy - only basic frame ID checks
   if (msg->addr == VOLVO_LCA_STEER) {
-    // LCA message flows: VCU1 (bus 0) -> PSCM (bus 2)
-    // We're acting as VCU1, so we send LCA message to PSCM bus (bus 2)
-    if (msg->bus != VOLVO_PSCM_BUS) {
+    // LCA message flows: VCU1 (main bus) -> PSCM (party bus)
+    // We're acting as VCU1, so we send LCA message to party bus (bus 2)
+    if (msg->bus != VOLVO_PARTY_BUS) {
       tx = false;  // Wrong bus
     }
 
@@ -107,25 +119,25 @@ static safety_config volvo_init(uint16_t param) {
 
   // Define allowed TX messages - very permissive
   static const CanMsg VOLVO_TX_MSGS[] = {
-    {VOLVO_LCA_STEER, VOLVO_PSCM_BUS, 8, .check_relay = true},  // LCA steering command to PSCM bus
+    {VOLVO_LCA_STEER, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA steering command to party bus
   };
 
   // Define RX checks - minimal monitoring for basic safety
   static RxCheck volvo_rx_checks[] = {
-    // Gear position - from VCU1 bus (bus 0)
-    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_VCU1_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    // Gear position - from main bus (bus 0)
+    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
-    // Vehicle speed - required for basic safety (on PSCM bus)
-    {.msg = {{VOLVO_BCM2_SPEED, VOLVO_PSCM_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    // Vehicle speed - required for basic safety (on party bus)
+    {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
-    // Brake pedal and cruise state - required for safety (on PSCM bus)
-    {.msg = {{VOLVO_BCM2, VOLVO_PSCM_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    // Brake pedal and cruise state - required for safety (on party bus)
+    {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
-    // Steering angle - required for lateral control (on PSCM bus)
-    {.msg = {{VOLVO_SAS, VOLVO_PSCM_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    // Steering angle - required for lateral control (on party bus)
+    {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
-    // Driver steering input - required for override detection (on PSCM bus)
-    {.msg = {{VOLVO_PSCM, VOLVO_PSCM_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    // Driver steering input - required for override detection (on party bus)
+    {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
     // Gas pedal position - required for safety (on PT bus)
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},

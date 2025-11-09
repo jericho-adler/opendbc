@@ -75,8 +75,26 @@ class CarState(CarStateBase):
 
   @staticmethod
   def get_can_parsers(CP):
+    # Main bus messages (VCU1 car side)
+    messages_main = [
+      ("GEAR_POSITION", 40),
+    ]
+
+    # PT bus messages (VCU1 ECM side)
+    messages_pt = [
+      ("ECM_1", 17),
+    ]
+
+    # Party bus messages (VCU PSCM/BCM2 side)
+    messages_party = [
+      ("BUS1_SPEED", 100),
+      ("BCM2", 50),
+      ("SAS", 100),
+      ("PSCM", 100),
+    ]
+
     return {
-      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], [], 0), # VCU1 car side
-      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 1), # VCU1 ECM side
-      Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], [], 2), # VCU PSCM/BCM2 side
+      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], messages_main, 0),
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], messages_pt, 1),
+      Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], messages_party, 2),
     }
