@@ -1,6 +1,6 @@
 #pragma once
 
-#include "opendbc/safety/safety_declarations.h"
+#include "opendbc/safety/declarations.h"
 
 // Volvo CMA platform CAN message addresses
 #define VOLVO_LCA_STEER           88U    // TX from VCU1 to PSCM, LCA steering command (0x58)

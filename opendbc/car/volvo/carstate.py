@@ -17,12 +17,12 @@ class CarState(CarStateBase):
 
     # car speed
     # Basic vehicle state from BCM2_SPEED
-    ret.vEgoRaw = cp_party.vl["BCM2_SPEED"]["SPEED"]
+    ret.vEgoRaw = cp_party.vl["BUS1_SPEED"]["BUS1_SPEED"]
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = ret.vEgoRaw < 0.1
 
     # gas
-    ret.gasPressed = cp_pt.vl["ECM_1"]["GAS_PEDAL_POSITION"] > 20+1 # 20 baseline + 1 tolerance
+    ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance
 
     # brake
     ret.brakePressed = bool(cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_A"] or cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_B"])

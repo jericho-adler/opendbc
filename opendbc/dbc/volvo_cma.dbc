@@ -47,9 +47,11 @@ BO_ 85 SAS: 8 XXX
  SG_ SAS_RATE_OF_CHANGE : 31|8@0- (1,0) [0|255] "" XXX
 
 BO_ 87 NEW_MSG_57: 8 XXX
- SG_ NEW_SIGNAL_1 : 19|4@0+ (1,0) [0|15] "" XXX
- SG_ NEW_SIGNAL_2 : 28|5@0+ (1,0) [0|31] "" XXX
- SG_ NEW_SIGNAL_3 : 53|2@0+ (1,0) [0|3] "" XXX
+ SG_ NEW_SIGNAL_5 : 15|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_1 : 16|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_2 : 24|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_3 : 32|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_4 : 40|8@1+ (1,0) [0|255] "" XXX
 
 BO_ 88 LCA: 8 XXX
  SG_ NEW_SIGNAL_3 : 1|2@0+ (1,0) [0|3] "" XXX
@@ -66,11 +68,13 @@ BO_ 88 LCA: 8 XXX
  SG_ LCA_STEER : 55|8@0- (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_6 : 60|4@1+ (1,0) [0|15] "" XXX
 
-BO_ 103 BCM2_SPEED: 8 XXX
- SG_ NEW_SIGNAL_1 : 8|8@1+ (1,0) [0|255] "" XXX
- SG_ COUNTER_1 : 23|12@0+ (1,0) [0|4095] "" XXX
- SG_ SPEED : 36|12@0+ (0.01,0) [0|4095] "m/s" XXX
- SG_ NEW_SIGNAL_2 : 61|6@0+ (1,0) [0|63] "" XXX
+BO_ 103 BCM2_SPEED_1: 8 XXX
+ SG_ WHEEL_SPEED_1 : 6|15@0+ (1,0) [0|255] "" XXX
+ SG_ WHEEL_SPEED_2 : 39|15@0+ (1,0) [0|32767] "" XXX
+
+BO_ 104 BCM2_SPEED_2: 8 XXX
+ SG_ WHEEL_SPEED_3 : 6|15@0+ (1,0) [0|32767] "" XXX
+ SG_ WHEEL_SPEED_4 : 39|15@0+ (1,0) [0|32767] "" XXX
 
 BO_ 105 BCM2: 8 XXX
  SG_ COUNTER_1 : 11|12@0+ (1,0) [0|4095] "" XXX
@@ -79,6 +83,9 @@ BO_ 105 BCM2: 8 XXX
  SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) [0|1] "" XXX
  SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) [0|1] "" XXX
 
+BO_ 112 BUS1_SPEED: 8 XXX
+ SG_ BUS1_SPEED : 23|16@0+ (1,0) [0|65535] "" XXX
+
 BO_ 128 GEAR_POSITION: 8 XXX
  SG_ GEAR_POSITION : 57|2@0+ (1,0) [0|3] "" XXX
 
@@ -86,7 +93,7 @@ BO_ 336 NEW_MSG_150: 8 XXX
  SG_ IGN_DRAFT : 5|2@0+ (1,0) [0|3] "" XXX
 
 BO_ 592 ECM_1: 8 XXX
- SG_ GAS_PEDAL_POSITION : 31|8@0+ (1,0) [0|255] "" XXX
+ SG_ ACCELERATOR_PEDAL_POS : 31|8@0+ (1,0) [0|255] "" XXX
 
 BO_ 1336 NEW_MSG_538: 8 XXX
  SG_ SWM_MULTIMEDIA_ACTIVITY : 22|1@0+ (1,0) [0|1] "" XXX
@@ -98,4 +105,8 @@ CM_ BO_ 23 "Might be related to PSCM 0x16";
 CM_ SG_ 88 LCA_ENABLE_INV "Master enable, active-low";
 CM_ SG_ 88 CURVE_RIGHT "Only appears to be HIGH on curve right, LOW curve left";
 CM_ SG_ 88 LCA_STEER "Seems torque-based, signed, follows the road curvature";
-CM_ SG_ 592 GAS_PEDAL_POSITION "Full gas ~200; Idle ~20";
+CM_ SG_ 103 WHEEL_SPEED_1 "Possible Front Left  (FL)";
+CM_ SG_ 103 WHEEL_SPEED_2 "Possible Front Right (FR)";
+CM_ SG_ 104 WHEEL_SPEED_3 "Possible Rear Left (RR)";
+CM_ SG_ 104 WHEEL_SPEED_4 "Possibe Rear Right (RR)";
+CM_ SG_ 592 ACCELERATOR_PEDAL_POS "Full gas ~200; Idle ~20";
