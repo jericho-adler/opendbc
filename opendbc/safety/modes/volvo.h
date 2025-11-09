@@ -103,7 +103,7 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
 }
 
 static safety_config volvo_init(uint16_t param) {
-  UNUSED(param);
+  SAFETY_UNUSED(param);
 
   // Define allowed TX messages - very permissive
   static const CanMsg VOLVO_TX_MSGS[] = {
