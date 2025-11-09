@@ -43,7 +43,7 @@ class CarState(CarStateBase):
 
     # cruise
     # Cruise control / Pilot Assist status from BCM2
-    ret.cruiseState.enabled = cp.vl["BCM2"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
+    ret.cruiseState.enabled = cp_party.vl["BCM2"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
     ret.cruiseState.available = True  # TODO: Determine actual availability
     ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
     ret.cruiseState.nonAdaptive = False
