@@ -75,22 +75,20 @@ class CarState(CarStateBase):
 
   @staticmethod
   def get_can_parsers(CP):
-    # Main bus messages (VCU1 car side)
+    # Temporarily set to 1 Hz for development - TODO: Update to actual frequencies once confirmed
     messages_main = [
-      ("GEAR_POSITION", 40),
+      ("GEAR_POSITION", 1),  # TODO: 40 Hz
     ]
 
-    # PT bus messages (VCU1 ECM side)
     messages_pt = [
-      ("ECM_1", 17),
+      ("ECM_1", 1),  # TODO: 17 Hz
     ]
 
-    # Party bus messages (VCU PSCM/BCM2 side)
     messages_party = [
-      ("BUS1_SPEED", 100),
-      ("BCM2", 50),
-      ("SAS", 100),
-      ("PSCM", 100),
+      ("BUS1_SPEED", 1),  # TODO: 100 Hz
+      ("BCM2", 1),  # TODO: 50 Hz
+      ("SAS", 1),  # TODO: 100 Hz
+      ("PSCM", 1),  # TODO: 100 Hz
     ]
 
     return {

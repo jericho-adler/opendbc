@@ -122,25 +122,15 @@ static safety_config volvo_init(uint16_t param) {
     {VOLVO_LCA_STEER, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA steering command to party bus
   };
 
-  // Define RX checks - minimal monitoring for basic safety
+  // Define RX checks - temporarily set to 1 Hz for development
+  // TODO: Update to actual frequencies once CAN bus rates are confirmed
   static RxCheck volvo_rx_checks[] = {
-    // Gear position - from main bus (bus 0)
-    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-
-    // Vehicle speed - required for basic safety (on party bus)
-    {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-
-    // Brake pedal and cruise state - required for safety (on party bus)
-    {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-
-    // Steering angle - required for lateral control (on party bus)
-    {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-
-    // Driver steering input - required for override detection (on party bus)
-    {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-
-    // Gas pedal position - required for safety (on PT bus)
-    {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 40 Hz
+    {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
+    {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 50 Hz
+    {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
+    {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
+    {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 17 Hz
   };
 
   return BUILD_SAFETY_CFG(volvo_rx_checks, VOLVO_TX_MSGS);
