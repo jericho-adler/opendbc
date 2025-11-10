@@ -100,15 +100,15 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
       tx = false;  // Wrong bus
     }
 
-    // Basic length check
-    /*if (GET_LEN(msg) != 8U) {
-      tx = false;  // Wrong message length
-    }*/
+    // Check if LCA is trying to be active
+    // DBC: LCA_STEER_ACTIVE : 18|2@0+ (values: 0=inactive, 3=active)
+    bool lca_active = ((msg->data[2] >> 2) & 0x3U) == 3U;
 
-    // Only allow when controls are enabled
-    // if (!controls_allowed) {
-    //   tx = false;
-    // }
+    // Allow inactive LCA messages always (to replace blocked stock LCA)
+    // Only allow active LCA when controls are enabled (cruise engaged)
+    if (!controls_allowed && lca_active) {
+      tx = false;  // Block active steering when cruise not engaged
+    }
   }
 
   return tx;
@@ -140,4 +140,5 @@ const safety_hooks volvo_hooks = {
   .init = volvo_init,
   .rx = volvo_rx_hook,
   .tx = volvo_tx_hook,
+  // No custom fwd hook - stock LCA always blocked by .check_relay = true
 };

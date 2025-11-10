@@ -3,6 +3,10 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int):
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
   Uses torque-based control via the LCA_STEER signal.
 
+  NOTE: This message must be sent continuously (even when inactive) because
+  stock LCA is permanently blocked by panda safety. When lat_active=False,
+  we send a safe/inactive LCA message to maintain PSCM communication.
+
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active

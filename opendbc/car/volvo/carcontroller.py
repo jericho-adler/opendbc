@@ -9,7 +9,7 @@ from opendbc.car.volvo.values import CarControllerParams
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
-    self.packer = CANPacker(dbc_names[Bus.main])
+    self.packer = CANPacker(dbc_names[Bus.party])
     self.apply_torque_last = 0
 
   def update(self, CC, CS, now_nanos):
@@ -17,6 +17,8 @@ class CarController(CarControllerBase):
     actuators = CC.actuators
 
     # lateral control - torque-based steering
+    # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
+    # Stock LCA is permanently blocked by panda safety, so we must always send
     if self.frame % CarControllerParams.STEER_STEP == 0:
       # Convert normalized torque to raw torque value
       apply_torque = int(round(actuators.torque * CarControllerParams.STEER_MAX))
