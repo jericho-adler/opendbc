@@ -22,7 +22,11 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
   // Main bus (bus 0) messages
   if (msg->bus == VOLVO_MAIN_BUS) {
-
+    // Gear position comes from main bus
+    if (msg->addr == VOLVO_GEAR_POSITION) {
+      // Signal: GEAR_POSITION (0: Park, 1: Reverse, 2: Neutral, 3: Drive)
+      // This is used by carstate.py for gear shifter state
+    }
   }
 
   // PT bus (bus 1) messages
@@ -47,11 +51,6 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
   // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
   if (msg->bus == VOLVO_PARTY_BUS) {
-    // Gear position comes from main bus
-    if (msg->addr == VOLVO_GEAR_POSITION) {
-      // Signal: GEAR_POSITION (0: Park, 1: Reverse, 2: Neutral, 3: Drive)
-      // This is used by carstate.py for gear shifter state
-    }
 
     // Update brake pedal and cruise state from BCM2
     if (msg->addr == VOLVO_BCM2) {
