@@ -22,11 +22,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
   // Main bus (bus 0) messages
   if (msg->bus == VOLVO_MAIN_BUS) {
-    // Gear position comes from main bus
-    if (msg->addr == VOLVO_GEAR_POSITION) {
-      // Signal: GEAR_POSITION (0: Park, 1: Reverse, 2: Neutral, 3: Drive)
-      // This is used by carstate.py for gear shifter state
-    }
+
   }
 
   // PT bus (bus 1) messages
@@ -38,10 +34,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
       int gas_pedal_position = msg->data[3];
       gas_pressed = gas_pedal_position > 20+1; // Match carstate.py tolerance
     }
-  }
 
-  // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
-  if (msg->bus == VOLVO_PARTY_BUS) {
     // Update vehicle speed from BUS1_SPEED
     if (msg->addr == VOLVO_BUS1_SPEED) {
       // Signal: BUS1_SPEED (0.015625 m/s per bit)
@@ -49,6 +42,15 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
       uint16_t speed_raw = ((msg->data[2] & 0xFFU) << 8) | msg->data[3];
       vehicle_moving = speed_raw > 6; // > 0.09375 m/s (approx 0.1 m/s)
       UPDATE_VEHICLE_SPEED(speed_raw * 0.015625);
+    }
+  }
+
+  // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
+  if (msg->bus == VOLVO_PARTY_BUS) {
+    // Gear position comes from main bus
+    if (msg->addr == VOLVO_GEAR_POSITION) {
+      // Signal: GEAR_POSITION (0: Park, 1: Reverse, 2: Neutral, 3: Drive)
+      // This is used by carstate.py for gear shifter state
     }
 
     // Update brake pedal and cruise state from BCM2
@@ -126,7 +128,7 @@ static safety_config volvo_init(uint16_t param) {
   // TODO: Update to actual frequencies once CAN bus rates are confirmed
   static RxCheck volvo_rx_checks[] = {
     {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 40 Hz
-    {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
+    {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PT_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
     {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 50 Hz
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
     {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz

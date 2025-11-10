@@ -16,8 +16,8 @@ class CarState(CarStateBase):
     ret = structs.CarState()
 
     # car speed
-    # Basic vehicle state from BCM2_SPEED
-    ret.vEgoRaw = cp_party.vl["BUS1_SPEED"]["BUS1_SPEED"]
+    # Basic vehicle state from BUS1_SPEED on PT bus
+    ret.vEgoRaw = cp_pt.vl["BUS1_SPEED"]["BUS1_SPEED"]
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = ret.vEgoRaw < 0.1
 
@@ -90,6 +90,9 @@ class CarState(CarStateBase):
       ("SAS", 1),  # TODO: 100 Hz
       ("PSCM", 1),  # TODO: 100 Hz
     ]
+    messages_main = []
+    messages_pt = []
+    messages_party = []
 
     return {
       Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], messages_main, 0),
