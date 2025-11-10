@@ -4,11 +4,11 @@
 
 // Volvo CMA platform CAN message addresses
 #define VOLVO_LCA_STEER           88U    // TX from VCU1 to PSCM, LCA steering command (0x58)
-#define VOLVO_BUS1_SPEED          112U   // RX from BCM, vehicle speed (BUS1_SPEED)
+#define VOLVO_BUS1_SPEED          0x70U   // RX from BCM, vehicle speed (BUS1_SPEED)
 #define VOLVO_BCM2                105U   // RX from BCM, brake pedal, cruise state
 #define VOLVO_SAS                 85U    // RX from SAS, steering angle sensor
 #define VOLVO_PSCM                22U    // RX from PSCM, driver steering input
-#define VOLVO_GEAR_POSITION       128U   // RX from transmission, gear position
+#define VOLVO_GEAR_POSITION       0x80U   // RX from transmission, gear position
 #define VOLVO_ECM_1               592U   // RX from ECM, accelerator pedal position (0x250)
 
 // CAN bus definitions for Volvo CMA platform
@@ -38,7 +38,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
     // Update vehicle speed from BUS1_SPEED
     if (msg->addr == VOLVO_BUS1_SPEED) {
       // Signal: BUS1_SPEED (0.015625 m/s per bit)
-      // DBC: SG_ BUS1_SPEED : 23|16@0+ (0.015625,0) [0|65535] "m/s"
+      // DBC: SG_ BUS1_SPEED : 23|16@0+ (0.015625,0) [0|65535] "m/s" XXX
       uint16_t speed_raw = ((msg->data[2] & 0xFFU) << 8) | msg->data[3];
       vehicle_moving = speed_raw > 6; // > 0.09375 m/s (approx 0.1 m/s)
       UPDATE_VEHICLE_SPEED(speed_raw * 0.015625);
