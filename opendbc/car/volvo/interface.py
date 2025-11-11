@@ -30,4 +30,6 @@ class CarInterface(CarInterfaceBase):
 
     ret.alphaLongitudinalAvailable = False
 
+    ret.pcmCruise = True
+
     return ret
