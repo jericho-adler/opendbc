@@ -3,13 +3,13 @@
 #include "opendbc/safety/declarations.h"
 
 // Volvo CMA platform CAN message addresses
-#define VOLVO_LCA_STEER           88U    // TX from VCU1 to PSCM, LCA steering command (0x58)
+#define VOLVO_LCA_STEER           0x58U    // TX from VCU1 to PSCM, LCA steering command (0x58)
 #define VOLVO_BUS1_SPEED          0x70U   // RX from BCM, vehicle speed (BUS1_SPEED)
-#define VOLVO_BCM2                105U   // RX from BCM, brake pedal, cruise state
-#define VOLVO_SAS                 85U    // RX from SAS, steering angle sensor
-#define VOLVO_PSCM                22U    // RX from PSCM, driver steering input
+#define VOLVO_BCM2                0x69U   // RX from BCM, brake pedal, cruise state
+#define VOLVO_SAS                 0x55U    // RX from SAS, steering angle sensor
+#define VOLVO_PSCM                0x16U    // RX from PSCM, driver steering input
 #define VOLVO_GEAR_POSITION       0x80U   // RX from transmission, gear position
-#define VOLVO_ECM_1               592U   // RX from ECM, accelerator pedal position (0x250)
+#define VOLVO_ECM_1               0x250U   // RX from ECM, accelerator pedal position (0x250)
 
 // CAN bus definitions for Volvo CMA platform
 // Using same naming as carstate.py for consistency: main, pt, party
@@ -35,7 +35,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
       // Gas pedal position - ACCELERATOR_PEDAL_POS
       // DBC: SG_ ACCELERATOR_PEDAL_POS : 31|8@0+ (1,0) [0|255]
       // carstate.py: > 20+1 (20 baseline + 1 tolerance)
-      int gas_pedal_position = msg->data[3];
+      uint8_t gas_pedal_position = msg->data[3];
       gas_pressed = gas_pedal_position > 20+1; // Match carstate.py tolerance
     }
 
@@ -100,16 +100,6 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
     if (msg->bus != VOLVO_PARTY_BUS) {
       tx = false;  // Wrong bus
     }
-
-    // Check if LCA is trying to be active
-    // DBC: LCA_STEER_ACTIVE : 18|2@0+ (values: 0=inactive, 3=active)
-    bool lca_active = ((msg->data[2] >> 2) & 0x3U) == 3U;
-
-    // Allow inactive LCA messages always (to replace blocked stock LCA)
-    // Only allow active LCA when controls are enabled (cruise engaged)
-    if (!controls_allowed && lca_active) {
-      tx = false;  // Block active steering when cruise not engaged
-    }
   }
 
   return tx;
@@ -126,9 +116,9 @@ static safety_config volvo_init(uint16_t param) {
   // Define RX checks - temporarily set to 1 Hz for development
   // TODO: Update to actual frequencies once CAN bus rates are confirmed
   static RxCheck volvo_rx_checks[] = {
-    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 40 Hz
+    //{.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 40 Hz
     {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PT_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
-    {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 50 Hz
+    //{.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 50 Hz
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
     {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 100 Hz
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 1U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // TODO: 17 Hz

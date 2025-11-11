@@ -35,7 +35,7 @@ class CarState(CarStateBase):
     # For torque-based control, we need steering torque feedback
     # TODO: Find actual steering torque signals in the DBC or reverse engineer them
     ret.steeringTorque = abs(cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION'])  # Driver torque
-    ret.steeringTorqueEps = 0  # EPS torque - placeholder until signal is found
+    #ret.steeringTorqueEps = 0  # EPS torque - placeholder until signal is found
     ret.steeringPressed = abs(cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION']) > CarControllerParams.STEER_DRIVER_ALLOWANCE
 
     # EPS status - placeholder until actual signal is found
@@ -75,27 +75,8 @@ class CarState(CarStateBase):
 
   @staticmethod
   def get_can_parsers(CP):
-    # Temporarily set to 1 Hz for development - TODO: Update to actual frequencies once confirmed
-    messages_main = [
-      ("GEAR_POSITION", 1),  # TODO: 40 Hz
-    ]
-
-    messages_pt = [
-      ("ECM_1", 1),  # TODO: 17 Hz
-    ]
-
-    messages_party = [
-      ("BUS1_SPEED", 1),  # TODO: 100 Hz
-      ("BCM2", 1),  # TODO: 50 Hz
-      ("SAS", 1),  # TODO: 100 Hz
-      ("PSCM", 1),  # TODO: 100 Hz
-    ]
-    messages_main = []
-    messages_pt = []
-    messages_party = []
-
     return {
-      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], messages_main, 0),
-      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], messages_pt, 1),
-      Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], messages_party, 2),
+      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], [], 0),
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 1),
+      Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], [], 2),
     }
