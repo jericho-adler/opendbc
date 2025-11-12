@@ -25,7 +25,7 @@ class CarState(CarStateBase):
     ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance
 
     # brake
-    ret.brakePressed = bool(cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_A"] or cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_B"])
+    ret.brakePressed = bool(cp.vl["BCM2"]["BRAKE_PEDAL_PRESSED_A"] or cp.vl["BCM2"]["BRAKE_PEDAL_PRESSED_B"])
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel

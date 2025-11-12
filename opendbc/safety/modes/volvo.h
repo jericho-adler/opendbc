@@ -22,7 +22,18 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
   // Main bus (bus 0) messages
   if (msg->bus == VOLVO_MAIN_BUS) {
-    // Currently no messages used from main bus
+    // Update brake pedal and cruise state from BCM2
+    if (msg->addr == VOLVO_BCM2) {
+      // DBC: SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) - inverted in DBC, so we invert raw bit
+      // DBC: SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) - not inverted
+      bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
+      bool brake_b = (msg->data[5] >> 6) & 1U; // Raw bit, active high
+      brake_pressed = brake_a || brake_b;
+
+      // DBC: SG_ CRUISE_OR_PILOT_ASSIST_ENGAGED : 12|1@0+ (1,0)
+      bool cruise_engaged = (msg->data[1] >> 4) & 1U;
+      pcm_cruise_check(cruise_engaged);
+    }
   }
 
   // PT bus (bus 1) messages
@@ -47,18 +58,6 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
   // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
   if (msg->bus == VOLVO_PARTY_BUS) {
-    // Update brake pedal and cruise state from BCM2
-    if (msg->addr == VOLVO_BCM2) {
-      // DBC: SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) - inverted in DBC, so we invert raw bit
-      // DBC: SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) - not inverted
-      bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
-      bool brake_b = (msg->data[5] >> 6) & 1U; // Raw bit, active high
-      brake_pressed = brake_a || brake_b;
-
-      // DBC: SG_ CRUISE_OR_PILOT_ASSIST_ENGAGED : 12|1@0+ (1,0)
-      bool cruise_engaged = (msg->data[1] >> 4) & 1U;
-      pcm_cruise_check(cruise_engaged);
-    }
 
     // Update steering angle from SAS
     if (msg->addr == VOLVO_SAS) {
@@ -110,7 +109,7 @@ static safety_config volvo_init(uint16_t param) {
   static RxCheck volvo_rx_checks[] = {
     {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // Using bus 2
     {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PT_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_BCM2, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
