@@ -10,7 +10,7 @@ TransmissionType = structs.CarParams.TransmissionType
 
 class CarState(CarStateBase):
   def update(self, can_parsers) -> structs.CarState:
-    cp = can_parsers[Bus.main]
+    cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
     cp_party = can_parsers[Bus.party]
     ret = structs.CarState()
@@ -25,7 +25,7 @@ class CarState(CarStateBase):
     ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance
 
     # brake
-    ret.brakePressed = bool(cp.vl["BCM2"]["BRAKE_PEDAL_PRESSED_A"] or cp.vl["BCM2"]["BRAKE_PEDAL_PRESSED_B"])
+    ret.brakePressed = bool(cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_A"] or cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_B"])
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel
@@ -43,7 +43,7 @@ class CarState(CarStateBase):
 
     # cruise
     # Cruise control / Pilot Assist status from BCM2
-    ret.cruiseState.enabled = cp_party.vl["BCM2"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
+    ret.cruiseState.enabled = cp_main.vl["VCU1"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
     ret.cruiseState.available = True  # TODO: Determine actual availability
     ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
     ret.cruiseState.nonAdaptive = False
@@ -54,7 +54,7 @@ class CarState(CarStateBase):
     #  ret.gearShifter = GearShifter.reverse
     #else:
     #  ret.gearShifter = GearShifter.drive
-    gearPosition = cp.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D (using bus 2)
+    gearPosition = cp_main.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D (using bus 2)
     if gearPosition == 0:
       ret.gearShifter = GearShifter.park
     elif gearPosition == 1:

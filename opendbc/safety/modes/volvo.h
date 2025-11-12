@@ -5,7 +5,7 @@
 // Volvo CMA platform CAN message addresses
 #define VOLVO_LCA_STEER           0x58U    // TX from VCU1 to PSCM, LCA steering command (0x58)
 #define VOLVO_BUS1_SPEED          0x70U   // RX from BCM, vehicle speed (BUS1_SPEED)
-#define VOLVO_BCM2                0x69U   // RX from BCM, brake pedal, cruise state
+#define VOLVO_VCU1                0x69U   // RX from BCM, brake pedal, cruise state
 #define VOLVO_SAS                 0x55U    // RX from SAS, steering angle sensor
 #define VOLVO_PSCM                0x16U    // RX from PSCM, driver steering input
 #define VOLVO_GEAR_POSITION       0x80U   // RX from transmission, gear position
@@ -109,7 +109,7 @@ static safety_config volvo_init(uint16_t param) {
   static RxCheck volvo_rx_checks[] = {
     {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // Using bus 2
     {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PT_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{VOLVO_BCM2, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_VCU1, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
