@@ -54,7 +54,7 @@ class CarState(CarStateBase):
     #  ret.gearShifter = GearShifter.reverse
     #else:
     #  ret.gearShifter = GearShifter.drive
-    gearPosition = cp_party.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D (using bus 2)
+    gearPosition = cp.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D (using bus 2)
     if gearPosition == 0:
       ret.gearShifter = GearShifter.park
     elif gearPosition == 1:

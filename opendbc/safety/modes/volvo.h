@@ -47,12 +47,10 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
   // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
   if (msg->bus == VOLVO_PARTY_BUS) {
-
     // Update brake pedal and cruise state from BCM2
     if (msg->addr == VOLVO_BCM2) {
       // DBC: SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) - inverted in DBC, so we invert raw bit
       // DBC: SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) - not inverted
-      // carstate.py reads brake from cp_party (Bus.party)
       bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
       bool brake_b = (msg->data[5] >> 6) & 1U; // Raw bit, active high
       brake_pressed = brake_a || brake_b;
@@ -110,7 +108,7 @@ static safety_config volvo_init(uint16_t param) {
 
   // Define RX checks - include all messages present in route
   static RxCheck volvo_rx_checks[] = {
-    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_PARTY_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // Using bus 2
+    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // Using bus 2
     {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PT_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_BCM2, VOLVO_PARTY_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
