@@ -16,7 +16,7 @@ class CarControllerParams:
   STEER_MAX = 127                      # Max torque value (8-bit signed in DBC)
   STEER_DELTA_UP = 1                  # Torque increase per refresh
   STEER_DELTA_DOWN = 2                # Torque decrease per refresh
-  STEER_DRIVER_ALLOWANCE = 10          # Allowed driver torque before limiting
+  STEER_DRIVER_ALLOWANCE = 3          # Allowed driver torque before limiting
   STEER_DRIVER_MULTIPLIER = 3          # Weight driver torque heavily
   STEER_DRIVER_FACTOR = 1              # From DBC
   STEER_ERROR_MAX = 100                # Max delta between torque cmd and torque motor
