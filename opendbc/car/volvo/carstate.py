@@ -9,6 +9,18 @@ TransmissionType = structs.CarParams.TransmissionType
 
 
 class CarState(CarStateBase):
+  def __init__(self, CP):
+    super().__init__(CP)
+    self.msg_pscm = {
+      'PSCM_ANGLE_SENSOR': 0,
+      'BIT_0': 0,
+      'BYTE_2': 0,
+      'BYTE_3': 0,
+      'BYTE_4': 0,
+      'DRIVER_INPUT_DEVIATION': 0,
+      'BYTE_6': 0,
+      'BYTE_7': 0,
+    }
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -73,6 +85,16 @@ class CarState(CarStateBase):
     # lock info TODO FlexRay
     ret.doorOpen = False # TODO: add door open
     ret.seatbeltUnlatched = False # TODO: add seatbelt unlatched
+
+    self.msg_pscm['PSCM_ANGLE_SENSOR'] = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR']
+    self.msg_pscm['BIT_0'] = cp_party.vl['PSCM']['BIT_0']
+    self.msg_pscm['BYTE_2'] = cp_party.vl['PSCM']['BYTE_2']
+    self.msg_pscm['BYTE_3'] = cp_party.vl['PSCM']['BYTE_3']
+    self.msg_pscm['BYTE_4'] = cp_party.vl['PSCM']['BYTE_4']
+    self.msg_pscm['DRIVER_INPUT_DEVIATION'] = cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION']
+    self.msg_pscm['BYTE_6'] = cp_party.vl['PSCM']['BYTE_6']
+    self.msg_pscm['BYTE_7'] = cp_party.vl['PSCM']['BYTE_7']
+
     return ret
 
   @staticmethod
