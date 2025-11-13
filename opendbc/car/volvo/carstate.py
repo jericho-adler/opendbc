@@ -50,6 +50,23 @@ class CarState(CarStateBase):
       'NEW_SIGNAL_10': 0,
       'NEW_SIGNAL_6': 0,
     }
+    """BO_ 85 SAS: 8 XXX
+ SG_ SAS_ANGLE_SENSOR : 6|15@0- (-0.05596,0) [0|32767] "º" XXX
+ SG_ NEW_SIGNAL_1 : 7|1@0+ (1,0) [0|1] "" XXX
+ SG_ SAS_INPUT_ACTIVITY : 21|6@0+ (1,0) [0|16383] "" XXX
+ SG_ NEW_SIGNAL_2 : 23|2@0+ (1,0) [0|3] "" XXX
+ SG_ SAS_RATE_OF_CHANGE : 31|8@0- (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_3 : 39|12@0+ (1,0) [0|4095] "" XXX
+ SG_ NEW_SIGNAL_4 : 43|20@0+ (1,0) [0|1048575] "" XXX"""
+    self.msg_sas = {
+      'SAS_ANGLE_SENSOR': 0,
+      'NEW_SIGNAL_1': 0,
+      'SAS_INPUT_ACTIVITY': 0,
+      'NEW_SIGNAL_2': 0,
+      'SAS_RATE_OF_CHANGE': 0,
+      'NEW_SIGNAL_3': 0,
+      'NEW_SIGNAL_4': 0,
+    }
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -150,6 +167,14 @@ class CarState(CarStateBase):
     self.msg_lca['LCA_STEER'] = cp_main.vl['LCA']['LCA_STEER']
     self.msg_lca['NEW_SIGNAL_10'] = cp_main.vl['LCA']['NEW_SIGNAL_10']
     self.msg_lca['NEW_SIGNAL_6'] = cp_main.vl['LCA']['NEW_SIGNAL_6']
+
+    self.msg_sas['SAS_ANGLE_SENSOR'] = cp_party.vl['SAS']['SAS_ANGLE_SENSOR']
+    self.msg_sas['NEW_SIGNAL_1'] = cp_party.vl['SAS']['NEW_SIGNAL_1']
+    self.msg_sas['SAS_INPUT_ACTIVITY'] = cp_party.vl['SAS']['SAS_INPUT_ACTIVITY']
+    self.msg_sas['NEW_SIGNAL_2'] = cp_party.vl['SAS']['NEW_SIGNAL_2']
+    self.msg_sas['SAS_RATE_OF_CHANGE'] = cp_party.vl['SAS']['SAS_RATE_OF_CHANGE']
+    self.msg_sas['NEW_SIGNAL_3'] = cp_party.vl['SAS']['NEW_SIGNAL_3']
+    self.msg_sas['NEW_SIGNAL_4'] = cp_party.vl['SAS']['NEW_SIGNAL_4']
 
     return ret
 

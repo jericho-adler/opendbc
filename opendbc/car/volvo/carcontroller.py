@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_driver_input_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_driver_input_message, create_sas_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -35,7 +35,8 @@ class CarController(CarControllerBase):
       self.apply_torque_last = apply_torque
 
       #can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm))
-      can_sends.append(create_driver_input_message(self.packer, CC.latActive, CS.msg_driver_input, self.frame))
+      #can_sends.append(create_driver_input_message(self.packer, CC.latActive, CS.msg_driver_input, self.frame))
+      can_sends.append(create_sas_message(self.packer, CC.latActive, CS.msg_sas, self.frame))
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX

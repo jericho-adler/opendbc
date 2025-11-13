@@ -104,3 +104,17 @@ def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict
     values['STEERING_DRIVER_INPUT'] = -1 if frame % 2 == 0 else -2 # Spoof hands on steering wheel (-1 or -2)
     values['STEERING_DRIVER_RATE_OF_CHANGE'] = 0 if frame % 2 == 0 else 14 # Spoof hands on steering wheel (-1 or -2)
   return packer.make_can_msg('DRIVER_INPUT', 0, values)
+
+def create_sas_message(packer, lat_active: bool, msg_sas: dict, frame: int):
+  values = {
+    'SAS_ANGLE_SENSOR': msg_sas['SAS_ANGLE_SENSOR'],
+    'NEW_SIGNAL_1': msg_sas['NEW_SIGNAL_1'],
+    'SAS_INPUT_ACTIVITY': msg_sas['SAS_INPUT_ACTIVITY'],
+    'NEW_SIGNAL_2': msg_sas['NEW_SIGNAL_2'],
+    'SAS_RATE_OF_CHANGE': msg_sas['SAS_RATE_OF_CHANGE'],
+    'NEW_SIGNAL_3': msg_sas['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_4': msg_sas['NEW_SIGNAL_4'],
+  }
+  if lat_active:
+    values['SAS_RATE_OF_CHANGE'] = 0 if frame % 2 == 0 else -3 # Spoof hands on steering wheel
+  return packer.make_can_msg('SAS', 0, values)
