@@ -102,4 +102,5 @@ def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict
   }
   if lat_active:
     values['STEERING_DRIVER_INPUT'] = -1 if frame % 2 == 0 else -2 # Spoof hands on steering wheel (-1 or -2)
+    values['STEERING_DRIVER_RATE_OF_CHANGE'] = 0 if frame % 2 == 0 else 14 # Spoof hands on steering wheel (-1 or -2)
   return packer.make_can_msg('DRIVER_INPUT', 0, values)
