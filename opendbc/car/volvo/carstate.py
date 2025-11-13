@@ -59,7 +59,7 @@ class CarState(CarStateBase):
     #ret.brakePressed = bool(cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_A"] or cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_B"])
     # BRAKE_PEDAL_PRESSED_A goes active when user starts pressing brake pedal, but no brake light is on yet due to tolerance
     # BRAKE_PEDAL_PRESSED_B goes active when when the brake pedal is pressed above minimum threshold, brake light is on
-    ret.brakePressed = cp_pt.vl["VCU1"]["BRAKE_PEDAL_PRESSED_B"] == 1
+    ret.brakePressed = cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_B"] == 1
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel
