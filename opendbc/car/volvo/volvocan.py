@@ -19,16 +19,19 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     return packer.make_can_msg('LCA', 2, msg_lca)
 
   if apply_torque < 0: # If torque is negative
-    curve_right = 63 # Turn right
-    loosely_1 = 79
-    loosely_2 = 115
+    curve_right = 63 # Right turn
+    #loosely_1 = 79
+    #loosely_2 = 115
   else:
-    curve_right = 0 # Turn left
-    loosely_1 = 115
-    loosely_2 = 79
-  if abs(apply_torque) < 5: # assume straight road
-    loosely_1 = 100
-    loosely_2 = 140
+    curve_right = 0 # Left turn
+    #loosely_1 = 115
+    #loosely_2 = 79
+  #if abs(apply_torque) < 5: # assume straight road
+    #loosely_1 = 100
+    #loosely_2 = 140
+
+  loosely_1 = 102
+  loosely_2 = 154
 
   values = {
     'NEW_SIGNAL_3': 0,
