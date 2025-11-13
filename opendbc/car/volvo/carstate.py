@@ -31,6 +31,25 @@ class CarState(CarStateBase):
       'STEERING_DRIVER_INPUT': 0,
       'BYTE_7': 0,
     }
+    self.msg_lca = {
+      'NEW_SIGNAL_3': 0,
+      'NEW_SIGNAL_8': 0,
+      'LCA_ENABLE_INV': 0,
+      'NEW_SIGNAL_2': 0,
+      'NEW_SIGNAL_1': 0,
+      'LCA_STEER_LOOSELY_1': 0,
+      'LCA_STEER_ACTIVE_INCOHERENT': 0,
+      'LCA_STEER_ACTIVE': 0,
+      'NEW_SIGNAL_7': 0,
+      'NEW_SIGNAL_9': 0,
+      'LCA_STEER_LOOSELY_2': 0,
+      'NEW_SIGNAL_4': 0,
+      'CURVE_RIGHT': 0,
+      'NEW_SIGNAL_5': 0,
+      'LCA_STEER': 0,
+      'NEW_SIGNAL_10': 0,
+      'NEW_SIGNAL_6': 0,
+    }
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -113,6 +132,24 @@ class CarState(CarStateBase):
     self.msg_driver_input['BYTE_5'] = cp_party.vl['DRIVER_INPUT']['BYTE_5']
     self.msg_driver_input['STEERING_DRIVER_INPUT'] = cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']
     self.msg_driver_input['BYTE_7'] = cp_party.vl['DRIVER_INPUT']['BYTE_7']
+
+    self.msg_lca['NEW_SIGNAL_3'] = cp_party.vl['LCA']['NEW_SIGNAL_3']
+    self.msg_lca['NEW_SIGNAL_8'] = cp_party.vl['LCA']['NEW_SIGNAL_8']
+    self.msg_lca['LCA_ENABLE_INV'] = cp_party.vl['LCA']['LCA_ENABLE_INV']
+    self.msg_lca['NEW_SIGNAL_2'] = cp_party.vl['LCA']['NEW_SIGNAL_2']
+    self.msg_lca['NEW_SIGNAL_1'] = cp_party.vl['LCA']['NEW_SIGNAL_1']
+    self.msg_lca['LCA_STEER_LOOSELY_1'] = cp_party.vl['LCA']['LCA_STEER_LOOSELY_1']
+    self.msg_lca['LCA_STEER_ACTIVE_INCOHERENT'] = cp_party.vl['LCA']['LCA_STEER_ACTIVE_INCOHERENT']
+    self.msg_lca['LCA_STEER_ACTIVE'] = cp_party.vl['LCA']['LCA_STEER_ACTIVE']
+    self.msg_lca['NEW_SIGNAL_7'] = cp_party.vl['LCA']['NEW_SIGNAL_7']
+    self.msg_lca['NEW_SIGNAL_9'] = cp_party.vl['LCA']['NEW_SIGNAL_9']
+    self.msg_lca['LCA_STEER_LOOSELY_2'] = cp_party.vl['LCA']['LCA_STEER_LOOSELY_2']
+    self.msg_lca['NEW_SIGNAL_4'] = cp_party.vl['LCA']['NEW_SIGNAL_4']
+    self.msg_lca['CURVE_RIGHT'] = cp_party.vl['LCA']['CURVE_RIGHT']
+    self.msg_lca['NEW_SIGNAL_5'] = cp_party.vl['LCA']['NEW_SIGNAL_5']
+    self.msg_lca['LCA_STEER'] = cp_party.vl['LCA']['LCA_STEER']
+    self.msg_lca['NEW_SIGNAL_10'] = cp_party.vl['LCA']['NEW_SIGNAL_10']
+    self.msg_lca['NEW_SIGNAL_6'] = cp_party.vl['LCA']['NEW_SIGNAL_6']
 
     return ret
 

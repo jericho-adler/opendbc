@@ -1,6 +1,6 @@
 import random
 
-def create_lca_steering(packer, lat_active: bool, apply_torque: int):
+def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
   """
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
   Uses torque-based control via the LCA_STEER signal.
@@ -13,7 +13,11 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int):
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     apply_torque: Steering torque to apply (-255 to 255)
+    msg_lca: Dictionary containing LCA message values
   """
+  if not lat_active:
+    return packer.make_can_msg('LCA', 2, msg_lca)
+
   if apply_torque < 0: # If torque is negative
     curve_right = 63 # Turn right
     loosely_1 = 79
@@ -42,7 +46,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int):
     'NEW_SIGNAL_6': 15, # ?
   }
 
-  if not lat_active:
+  """if not lat_active:
     values = {
       'NEW_SIGNAL_3': 0,
       'LCA_ENABLE_INV': 1,
@@ -57,7 +61,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int):
       'NEW_SIGNAL_5': 3,
       'LCA_STEER': 0,
       'NEW_SIGNAL_6': 15,
-    }
+    }"""
 
   return packer.make_can_msg('LCA', 2, values)
 

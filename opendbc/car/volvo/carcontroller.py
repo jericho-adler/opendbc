@@ -31,11 +31,11 @@ class CarController(CarControllerBase):
       if not CC.latActive:
         apply_torque = 0
 
-      can_sends.append(create_lca_steering(self.packer, CC.latActive, apply_torque))
+      can_sends.append(create_lca_steering(self.packer, CC.latActive, apply_torque, CS.msg_lca))
       self.apply_torque_last = apply_torque
 
       #can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm))
-      can_sends.append(create_driver_input_message(self.packer, CC.latActive, CS.msg_driver_input, frame))
+      can_sends.append(create_driver_input_message(self.packer, CC.latActive, CS.msg_driver_input, self.frame))
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
