@@ -1,3 +1,5 @@
+import random
+
 def create_lca_steering(packer, lat_active: bool, apply_torque: int):
   """
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
@@ -82,3 +84,18 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict):
   if lat_active:
     values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
   return packer.make_can_msg('PSCM', 0, values)
+
+def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict):
+  values = {
+    'BYTE_0': msg_driver_input['BYTE_0'],
+    'BYTE_1': msg_driver_input['BYTE_1'],
+    'BYTE_2': msg_driver_input['BYTE_2'],
+    'STEERING_DRIVER_RATE_OF_CHANGE': msg_driver_input['STEERING_DRIVER_RATE_OF_CHANGE'],
+    'BYTE_4': msg_driver_input['BYTE_4'],
+    'BYTE_5': msg_driver_input['BYTE_5'],
+    'STEERING_DRIVER_INPUT': msg_driver_input['STEERING_DRIVER_INPUT'],
+    'BYTE_7': msg_driver_input['BYTE_7'],
+  }
+  if lat_active:
+    values['STEERING_DRIVER_INPUT'] = random.randint(-1, -2) # Spoof hands on steering wheel, random value -1 or -2
+  return packer.make_can_msg('DRIVER_INPUT', 0, values)

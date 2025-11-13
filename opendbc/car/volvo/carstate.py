@@ -21,6 +21,16 @@ class CarState(CarStateBase):
       'BYTE_6': 0,
       'BYTE_7': 0,
     }
+    self.msg_driver_input = {
+      'BYTE_0': 0,
+      'BYTE_1': 0,
+      'BYTE_2': 0,
+      'STEERING_DRIVER_RATE_OF_CHANGE': 0,
+      'BYTE_4': 0,
+      'BYTE_5': 0,
+      'STEERING_DRIVER_INPUT': 0,
+      'BYTE_7': 0,
+    }
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -94,6 +104,15 @@ class CarState(CarStateBase):
     self.msg_pscm['DRIVER_INPUT_DEVIATION'] = cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION']
     self.msg_pscm['BYTE_6'] = cp_party.vl['PSCM']['BYTE_6']
     self.msg_pscm['BYTE_7'] = cp_party.vl['PSCM']['BYTE_7']
+
+    self.msg_driver_input['BYTE_0'] = cp_party.vl['DRIVER_INPUT']['BYTE_0']
+    self.msg_driver_input['BYTE_1'] = cp_party.vl['DRIVER_INPUT']['BYTE_1']
+    self.msg_driver_input['BYTE_2'] = cp_party.vl['DRIVER_INPUT']['BYTE_2']
+    self.msg_driver_input['STEERING_DRIVER_RATE_OF_CHANGE'] = cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_RATE_OF_CHANGE']
+    self.msg_driver_input['BYTE_4'] = cp_party.vl['DRIVER_INPUT']['BYTE_4']
+    self.msg_driver_input['BYTE_5'] = cp_party.vl['DRIVER_INPUT']['BYTE_5']
+    self.msg_driver_input['STEERING_DRIVER_INPUT'] = cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']
+    self.msg_driver_input['BYTE_7'] = cp_party.vl['DRIVER_INPUT']['BYTE_7']
 
     return ret
 

@@ -10,6 +10,7 @@
 #define VOLVO_PSCM                0x16U    // RX from PSCM, driver steering input
 #define VOLVO_GEAR_POSITION       0x80U   // RX from transmission, gear position
 #define VOLVO_ECM_1               0x250U   // RX from ECM, accelerator pedal position (0x250)
+#define VOLVO_DRIVER_INPUT        0x15U
 
 // CAN bus definitions for Volvo CMA platform
 // Using same naming as carstate.py for consistency: main, pt, party
@@ -102,6 +103,14 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
     }
   }
 
+  if (msg->addr == VOLVO_DRIVER_INPUT) {
+    // Driver input message: we relay from party bus (bus 2) to main bus (bus 0)
+    // So we TX on main bus (bus 0)
+    if (msg->bus != VOLVO_MAIN_BUS) {
+      tx = false;  // Wrong bus
+    }
+  }
+
   return tx;
 }
 
@@ -111,7 +120,8 @@ static safety_config volvo_init(uint16_t param) {
   // Define allowed TX messages - very permissive
   static const CanMsg VOLVO_TX_MSGS[] = {
     {VOLVO_LCA_STEER, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA steering command to party bus
-    {VOLVO_PSCM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // PSCM message sent to main bus (relay from party bus)
+    //{VOLVO_PSCM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // PSCM message sent to main bus (relay from party bus)
+    {VOLVO_DRIVER_INPUT, VOLVO_MAIN_BUS, 8, .check_relay = true},  // Driver input message sent to main bus
   };
 
   // Define RX checks - include all messages present in route
@@ -121,6 +131,7 @@ static safety_config volvo_init(uint16_t param) {
     {.msg = {{VOLVO_VCU1, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_DRIVER_INPUT, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
