@@ -28,9 +28,10 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
     if (msg->addr == VOLVO_VCU1) {
       // DBC: SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) - inverted in DBC, so we invert raw bit
       // DBC: SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) - not inverted
-      bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
+      //bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
       bool brake_b = (msg->data[5] >> 6) & 1U; // Raw bit, active high
-      brake_pressed = brake_a || brake_b;
+      //brake_pressed = brake_a || brake_b;
+      brake_pressed = brake_b;
 
       // DBC: SG_ CRUISE_OR_PILOT_ASSIST_ENGAGED : 12|1@0+ (1,0)
       bool cruise_engaged = (msg->data[1] >> 4) & 1U;
