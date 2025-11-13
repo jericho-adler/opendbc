@@ -66,15 +66,6 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   return packer.make_can_msg('LCA', 2, values)
 
 def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int):
-  # BO_ 22 PSCM: 8 XXX
-  # SG_ PSCM_ANGLE_SENSOR : 6|15@0- (-0.05596,0) [-916|916] "º" XXX
-  # SG_ BIT_0 : 7|1@0+ (1,0) [0|1] "" XXX
-  # SG_ BYTE2 : 23|8@0+ (1,0) [0|255] "" XXX
-  # SG_ BYTE_3 : 31|8@0+ (1,0) [0|255] "" XXX
-  # SG_ BYTE_4 : 39|8@0+ (1,0) [0|255] "" XXX
-  # SG_ DRIVER_INPUT_DEVIATION : 47|8@0- (1,0) [-128|127] "" XXX
-  # SG_ BYTE_6 : 55|8@0+ (1,0) [0|255] "" XXX
-  # SG_ BYTE_7 : 63|8@0+ (1,0) [0|255] "" XXX
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],

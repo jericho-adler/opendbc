@@ -11,6 +11,7 @@
 #define VOLVO_GEAR_POSITION       0x80U   // RX from transmission, gear position
 #define VOLVO_ECM_1               0x250U   // RX from ECM, accelerator pedal position (0x250)
 #define VOLVO_DRIVER_INPUT        0x15U
+#define VOLVO_BUS1_CRUISE_CONTROL 0x340U   // RX from BCM, cruise control state (BUS1_CRUISE_CONTROL)
 
 // CAN bus definitions for Volvo CMA platform
 // Using same naming as carstate.py for consistency: main, pt, party
@@ -143,6 +144,7 @@ static safety_config volvo_init(uint16_t param) {
     {.msg = {{VOLVO_DRIVER_INPUT, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_LCA_STEER, VOLVO_MAIN_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_BUS1_CRUISE_CONTROL, VOLVO_PT_BUS, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
   return BUILD_SAFETY_CFG(volvo_rx_checks, VOLVO_TX_MSGS);
