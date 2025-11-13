@@ -85,7 +85,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict):
     values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict):
+def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict, frame: int):
   values = {
     'BYTE_0': msg_driver_input['BYTE_0'],
     'BYTE_1': msg_driver_input['BYTE_1'],
@@ -97,5 +97,5 @@ def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict
     'BYTE_7': msg_driver_input['BYTE_7'],
   }
   if lat_active:
-    values['STEERING_DRIVER_INPUT'] = random.randint(-1, -2) # Spoof hands on steering wheel, random value -1 or -2
+    values['STEERING_DRIVER_INPUT'] = -1 if frame % 2 == 0 else -2 # Spoof hands on steering wheel (-1 or -2)
   return packer.make_can_msg('DRIVER_INPUT', 0, values)

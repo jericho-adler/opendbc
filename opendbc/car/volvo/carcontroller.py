@@ -35,7 +35,7 @@ class CarController(CarControllerBase):
       self.apply_torque_last = apply_torque
 
       #can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm))
-      can_sends.append(create_driver_input_message(self.packer, CC.latActive, CS.msg_driver_input))
+      can_sends.append(create_driver_input_message(self.packer, CC.latActive, CS.msg_driver_input, frame))
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
