@@ -83,25 +83,3 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int):
     values['BYTE_2'] = 195 if frame % 2 == 0 else 249 # msg_pscm['BYTE_2']
 
   return packer.make_can_msg('PSCM', 0, values)
-
-def create_driver_input_message(packer, lat_active: bool, msg_driver_input: dict, frame: int):
-  values = {
-    'BYTE_0': msg_driver_input['BYTE_0'],
-    'BYTE_1': msg_driver_input['BYTE_1'],
-    'BYTE_2': msg_driver_input['BYTE_2'],
-    'STEERING_DRIVER_RATE_OF_CHANGE': msg_driver_input['STEERING_DRIVER_RATE_OF_CHANGE'],
-    'BYTE_4': msg_driver_input['BYTE_4'],
-    'BYTE_5': msg_driver_input['BYTE_5'],
-    'STEERING_DRIVER_INPUT': msg_driver_input['STEERING_DRIVER_INPUT'],
-    'BYTE_7': msg_driver_input['BYTE_7'],
-  }
-  if lat_active:
-    values['STEERING_DRIVER_INPUT'] = -1 if frame % 2 == 0 else -2 # Spoof hands on steering wheel (-1 or -2)
-    values['STEERING_DRIVER_RATE_OF_CHANGE'] = 0 if frame % 2 == 0 else 14 # Spoof hands on steering wheel (-1 or -2)
-  return packer.make_can_msg('DRIVER_INPUT', 0, values)
-
-def create_sas_message(packer, lat_active: bool, msg_sas: dict, frame: int):
-  values = msg_sas
-  #if lat_active:
-  #  values['SAS_RATE_OF_CHANGE'] = 0 if frame % 2 == 0 else -3 # Spoof hands on steering wheel
-  return packer.make_can_msg('SAS', 0, values)
