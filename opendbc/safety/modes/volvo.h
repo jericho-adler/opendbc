@@ -128,9 +128,9 @@ static safety_config volvo_init(uint16_t param) {
   // Define allowed TX messages - very permissive
   static const CanMsg VOLVO_TX_MSGS[] = {
     {VOLVO_LCA_STEER, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA steering command to party bus
-    //{VOLVO_PSCM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // PSCM message sent to main bus (relay from party bus)
+    {VOLVO_PSCM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // PSCM message sent to main bus (relay from party bus)
     //{VOLVO_DRIVER_INPUT, VOLVO_MAIN_BUS, 8, .check_relay = true},  // Driver input message sent to main bus
-    {VOLVO_SAS, VOLVO_MAIN_BUS, 8, .check_relay = true},  // SAS message sent to main bus
+    //{VOLVO_SAS, VOLVO_MAIN_BUS, 8, .check_relay = true},  // SAS message sent to main bus
   };
 
   // Define RX checks - include all messages present in route

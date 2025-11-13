@@ -72,6 +72,7 @@ BO_ 87 NEW_MSG_57: 8 XXX
  SG_ NEW_SIGNAL_2 : 24|8@1+ (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_3 : 32|8@1+ (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_4 : 40|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_6 : 53|2@0+ (1,0) [0|3] "" XXX
 
 BO_ 88 LCA: 8 XXX
  SG_ NEW_SIGNAL_3 : 1|2@0+ (1,0) [0|3] "" XXX
