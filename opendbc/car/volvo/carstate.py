@@ -11,35 +11,6 @@ TransmissionType = structs.CarParams.TransmissionType
 class CarState(CarStateBase):
   def __init__(self, CP):
     super().__init__(CP)
-    self.msg_pscm = {
-      'PSCM_ANGLE_SENSOR': 0,
-      'BIT_0': 0,
-      'BYTE_2': 0,
-      'BYTE_3': 0,
-      'BYTE_4': 0,
-      'DRIVER_INPUT_DEVIATION': 0,
-      'BYTE_6': 0,
-      'BYTE_7': 0,
-    }
-    self.msg_lca = {
-      'NEW_SIGNAL_3': 0,
-      'NEW_SIGNAL_8': 0,
-      'LCA_ENABLE_INV': 0,
-      'NEW_SIGNAL_2': 0,
-      'NEW_SIGNAL_1': 0,
-      'LCA_STEER_LOOSELY_1': 0,
-      'LCA_STEER_ACTIVE_INCOHERENT': 0,
-      'LCA_STEER_ACTIVE': 0,
-      'NEW_SIGNAL_7': 0,
-      'NEW_SIGNAL_9': 0,
-      'LCA_STEER_LOOSELY_2': 0,
-      'NEW_SIGNAL_4': 0,
-      'CURVE_RIGHT': 0,
-      'NEW_SIGNAL_5': 0,
-      'LCA_STEER': 0,
-      'NEW_SIGNAL_10': 0,
-      'NEW_SIGNAL_6': 0,
-    }
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -50,7 +21,7 @@ class CarState(CarStateBase):
     # Basic vehicle state from BUS1_SPEED on PT bus
     ret.vEgoRaw = cp_pt.vl["BUS1_SPEED"]["BUS1_SPEED"]
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
-    ret.standstill = ret.vEgoRaw < 0.1
+    ret.standstill = ret.vEgoRaw <= 0.09375
 
     # gas
     ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance
@@ -76,7 +47,6 @@ class CarState(CarStateBase):
     self.eps_active = True  # Assume EPS is active for now
 
     # cruise
-    # Cruise control / Pilot Assist status from BCM2
     ret.cruiseState.enabled = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1 # Do not use the following, might be unavailable due to rain: cp_main.vl["VCU1"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
     ret.cruiseState.available = True  # TODO: Determine actual availability
     ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
@@ -106,32 +76,10 @@ class CarState(CarStateBase):
     ret.doorOpen = False # TODO: add door open
     ret.seatbeltUnlatched = False # TODO: add seatbelt unlatched
 
-    self.msg_pscm['PSCM_ANGLE_SENSOR'] = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR']
-    self.msg_pscm['BIT_0'] = cp_party.vl['PSCM']['BIT_0']
-    self.msg_pscm['BYTE_2'] = cp_party.vl['PSCM']['BYTE_2']
-    self.msg_pscm['BYTE_3'] = cp_party.vl['PSCM']['BYTE_3']
-    self.msg_pscm['BYTE_4'] = cp_party.vl['PSCM']['BYTE_4']
-    self.msg_pscm['DRIVER_INPUT_DEVIATION'] = cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION']
-    self.msg_pscm['BYTE_6'] = cp_party.vl['PSCM']['BYTE_6']
-    self.msg_pscm['BYTE_7'] = cp_party.vl['PSCM']['BYTE_7']
-
-    self.msg_lca['NEW_SIGNAL_3'] = cp_main.vl['LCA']['NEW_SIGNAL_3']
-    self.msg_lca['NEW_SIGNAL_8'] = cp_main.vl['LCA']['NEW_SIGNAL_8']
-    self.msg_lca['LCA_ENABLE_INV'] = cp_main.vl['LCA']['LCA_ENABLE_INV']
-    self.msg_lca['NEW_SIGNAL_2'] = cp_main.vl['LCA']['NEW_SIGNAL_2']
-    self.msg_lca['NEW_SIGNAL_1'] = cp_main.vl['LCA']['NEW_SIGNAL_1']
-    self.msg_lca['LCA_STEER_LOOSELY_1'] = cp_main.vl['LCA']['LCA_STEER_LOOSELY_1']
-    self.msg_lca['LCA_STEER_ACTIVE_INCOHERENT'] = cp_main.vl['LCA']['LCA_STEER_ACTIVE_INCOHERENT']
-    self.msg_lca['LCA_STEER_ACTIVE'] = cp_main.vl['LCA']['LCA_STEER_ACTIVE']
-    self.msg_lca['NEW_SIGNAL_7'] = cp_main.vl['LCA']['NEW_SIGNAL_7']
-    self.msg_lca['NEW_SIGNAL_9'] = cp_main.vl['LCA']['NEW_SIGNAL_9']
-    self.msg_lca['LCA_STEER_LOOSELY_2'] = cp_main.vl['LCA']['LCA_STEER_LOOSELY_2']
-    self.msg_lca['NEW_SIGNAL_4'] = cp_main.vl['LCA']['NEW_SIGNAL_4']
-    self.msg_lca['CURVE_RIGHT'] = cp_main.vl['LCA']['CURVE_RIGHT']
-    self.msg_lca['NEW_SIGNAL_5'] = cp_main.vl['LCA']['NEW_SIGNAL_5']
-    self.msg_lca['LCA_STEER'] = cp_main.vl['LCA']['LCA_STEER']
-    self.msg_lca['NEW_SIGNAL_10'] = cp_main.vl['LCA']['NEW_SIGNAL_10']
-    self.msg_lca['NEW_SIGNAL_6'] = cp_main.vl['LCA']['NEW_SIGNAL_6']
+    # Store entire message dictionaries
+    self.msg_pscm = cp_party.vl['PSCM']
+    self.msg_lca = cp_main.vl['LCA']
+    self.msg_vcu1_pscm_control = cp_main.vl['VCU1_PSCM_CONTROL']
 
     return ret
 
