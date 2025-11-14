@@ -39,9 +39,9 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     #loosely_1 = 8
     #loosely_2 = 30
 
-  #if abs(lca_steer) < 2:
-  #  loosely_1 = baseline_loosely_1
-  #  loosely_2 = baseline_loosely_2
+  if abs(lca_steer) < 1: # Basically == 0
+    loosely_1 = baseline_loosely_1
+    loosely_2 = baseline_loosely_2
 
   values = {
     'NEW_SIGNAL_3': 0,
