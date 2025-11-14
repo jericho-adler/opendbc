@@ -70,12 +70,8 @@ class CarState(CarStateBase):
     ret.cruiseState.nonAdaptive = False
     ret.cruiseState.standstill = ret.standstill # False # Todo: Find cruise control standstill signal
 
-    # gear TODO
-    #if bool(cp_cam.vl['Dat_BSI']['P103_Com_bRevGear']):
-    #  ret.gearShifter = GearShifter.reverse
-    #else:
-    #  ret.gearShifter = GearShifter.drive
-    gearPosition = cp_main.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D (using bus 2)
+    # gear
+    gearPosition = cp_main.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D
     if gearPosition == 0:
       ret.gearShifter = GearShifter.park
     elif gearPosition == 1:
