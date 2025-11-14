@@ -31,11 +31,12 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   curve_right = 0 # LEFT turn or STRAIGHT
   if lca_steer < 0:
     curve_right = 63 # RIGHT turn
-    loosely_1 = 252
-    loosely_2 = 47
+    #loosely_1 = 252
+    #loosely_2 = 47
   else: # LEFT turn or STRAIGHT
-    loosely_1 = 9
-    loosely_2 = 64
+    curve_right = 0
+    #loosely_1 = 9
+    #loosely_2 = 64
     #loosely_1 = 8
     #loosely_2 = 30
 
