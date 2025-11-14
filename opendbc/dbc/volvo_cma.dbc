@@ -66,13 +66,19 @@ BO_ 85 SAS: 8 XXX
  SG_ NEW_SIGNAL_4 : 43|20@0+ (1,0) [0|1048575] "" XXX
  SG_ SAS_COUNTER : 44|4@1+ (1,0) [0|15] "" XXX
 
-BO_ 87 NEW_MSG_57: 8 XXX
- SG_ NEW_SIGNAL_5 : 15|8@0+ (1,0) [0|255] "" XXX
- SG_ NEW_SIGNAL_1 : 16|8@1+ (1,0) [0|255] "" XXX
- SG_ NEW_SIGNAL_2 : 24|8@1+ (1,0) [0|255] "" XXX
- SG_ NEW_SIGNAL_3 : 32|8@1+ (1,0) [0|255] "" XXX
- SG_ NEW_SIGNAL_4 : 40|8@1+ (1,0) [0|255] "" XXX
- SG_ NEW_SIGNAL_6 : 53|2@0+ (1,0) [0|3] "" XXX
+BO_ 87 VCU1_PSCM_CONTROL: 8 XXX
+ SG_ NEW_SIGNAL_3 : 0|1@0+ (1,0) [0|1] "" XXX
+ SG_ LCA_ACCEPT_COMMANDS_RELATED : 4|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_2 : 7|3@0+ (1,0) [0|7] "" XXX
+ SG_ NEW_SIGNAL_5 : 12|5@0+ (1,0) [0|31] "" XXX
+ SG_ LCA_ACCEPT_COMMANDS_INV : 13|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_4 : 15|2@0+ (1,0) [0|3] "" XXX
+ SG_ TIMER_1 : 23|16@0+ (1,0) [0|65535] "" XXX
+ SG_ TIMER_2 : 39|16@0+ (1,0) [0|65535] "" XXX
+ SG_ NEW_SIGNAL_8 : 51|4@0+ (1,0) [0|15] "" XXX
+ SG_ COUNTER_1 : 53|2@0+ (1,0) [0|3] "" XXX
+ SG_ NEW_SIGNAL_7 : 55|2@0+ (1,0) [0|3] "" XXX
+ SG_ NEW_SIGNAL_9 : 63|8@0+ (1,0) [0|255] "" XXX
 
 BO_ 88 LCA: 8 XXX
  SG_ NEW_SIGNAL_3 : 1|2@0+ (1,0) [0|3] "" XXX
@@ -130,6 +136,8 @@ BO_ 1336 NEW_MSG_538: 8 XXX
  SG_ NEW_SIGNAL_2 : 29|1@0+ (1,0) [0|1] "" XXX
 
 CM_ BO_ 23 "Might be related to PSCM 0x16";
+CM_ SG_ 87 LCA_ACCEPT_COMMANDS_RELATED "Goes to 15 when actively operating LCA";
+CM_ SG_ 87 LCA_ACCEPT_COMMANDS_INV "Goes to 0 when PSCM allowed to receive LCA commands";
 CM_ SG_ 88 LCA_ENABLE_INV "Master enable, active-low";
 CM_ SG_ 88 CURVE_RIGHT "Only appears to be HIGH on curve right, LOW curve left";
 CM_ SG_ 88 LCA_STEER "Seems torque-based, signed, follows the road curvature";

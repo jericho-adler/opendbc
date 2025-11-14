@@ -18,20 +18,30 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   if not lat_active:
     return packer.make_can_msg('LCA', 2, msg_lca)
 
-  if apply_torque < 0: # If torque is negative
-    curve_right = 63 # Right turn
-    #loosely_1 = 79
-    #loosely_2 = 115
-  else:
-    curve_right = 0 # Left turn
-    #loosely_1 = 115
-    #loosely_2 = 79
-  #if abs(apply_torque) < 5: # assume straight road
-    #loosely_1 = 100
-    #loosely_2 = 140
+  baseline_loosely_1 = 102 # Standard straight road or light right turn
+  baseline_loosely_2 = 154 # Standard straight road or light right turn
 
-  loosely_1 = 102
-  loosely_2 = 154
+  # In openpilot, a positive actuators.torque value corresponds to a LEFT turn.
+  # In Volvo, a positive LCA_STEER value corresponds to a LEFT turn.
+  lca_steer = apply_torque
+
+  loosely_1 = baseline_loosely_1
+  loosely_2 = baseline_loosely_2
+
+  curve_right = 0 # LEFT turn or STRAIGHT
+  if lca_steer < 0:
+    curve_right = 63 # RIGHT turn
+    loosely_1 = 252
+    loosely_2 = 47
+  else: # STRAIGHT or LEFT turn
+    loosely_1 = 9
+    loosely_2 = 64
+    #loosely_1 = 8
+    #loosely_2 = 30
+
+  # if abs(lca_steer) < 1:
+  #   loosely_1 = baseline_loosely_1
+  #   loosely_2 = baseline_loosely_2
 
   values = {
     'NEW_SIGNAL_3': 0,
@@ -86,3 +96,33 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int):
     values['BYTE_2'] = 195 if frame % 2 == 0 else 249 # msg_pscm['BYTE_2']
 
   return packer.make_can_msg('PSCM', 0, values)
+
+def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: dict,
+                            timer_1: int, timer_2: int):
+  """
+  Create VCU1_PSCM_CONTROL message for Volvo CMA platform.
+  This message enables PSCM to accept LCA commands.
+
+  Args:
+    packer: CAN packer instance
+    lat_active: Whether lateral control is active
+    msg_vcu1_pscm_control: Dictionary containing VCU1_PSCM_CONTROL message values
+    timer_1: 16-bit timer value (218 kHz, increments by ~3270 per message)
+    timer_2: 16-bit timer value (218 kHz, increments by ~3270 per message)
+  """
+  values = {
+    'NEW_SIGNAL_3': msg_vcu1_pscm_control['NEW_SIGNAL_3'],
+    'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_RELATED'],
+    'NEW_SIGNAL_2': msg_vcu1_pscm_control['NEW_SIGNAL_2'],
+    'NEW_SIGNAL_5': msg_vcu1_pscm_control['NEW_SIGNAL_5'],
+    'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_INV'],
+    'NEW_SIGNAL_4': msg_vcu1_pscm_control['NEW_SIGNAL_4'],
+    'TIMER_1': timer_1,
+    'TIMER_2': timer_2,
+    'NEW_SIGNAL_8': msg_vcu1_pscm_control['NEW_SIGNAL_8'],
+    'COUNTER_1': msg_vcu1_pscm_control['COUNTER_1'],
+    'NEW_SIGNAL_7': msg_vcu1_pscm_control['NEW_SIGNAL_7'],
+    'NEW_SIGNAL_9': msg_vcu1_pscm_control['NEW_SIGNAL_9'],
+  }
+
+  return packer.make_can_msg('VCU1_PSCM_CONTROL', 2, values)
