@@ -25,24 +25,41 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   # In Volvo, a positive LCA_STEER value corresponds to a LEFT turn.
   lca_steer = apply_torque
 
-  loosely_1 = baseline_loosely_1
-  loosely_2 = baseline_loosely_2
+  # Scale loosely values according to lca_steer
+  # Maximum values for each direction
+  max_loosely_1_right = 252  # RIGHT turn
+  min_loosely_2_right = 47   # RIGHT turn
+  min_loosely_1_left = 9     # LEFT turn
+  min_loosely_2_left = 64    # LEFT turn
+  #loosely_1 = 8             # LEFT turn
+  #loosely_2 = 30            # LEFT turn
+
+  # Maximum steering torque (typically 255 for openpilot)
+  # Already scaled in CarController.update()
+  #max_steer = 255.0
+  max_steer = 127.0
 
   curve_right = 0 # LEFT turn or STRAIGHT
   if lca_steer < 0:
+    # RIGHT turn: scale from baseline to max/min based on torque magnitude
     curve_right = 63 # RIGHT turn
-    #loosely_1 = 252
-    #loosely_2 = 47
-  else: # LEFT turn or STRAIGHT
-    curve_right = 0
-    #loosely_1 = 9
-    #loosely_2 = 64
-    #loosely_1 = 8
-    #loosely_2 = 30
-
-  if abs(lca_steer) < 1: # Basically == 0
+    steer_ratio = abs(lca_steer) / max_steer
+    loosely_1 = baseline_loosely_1 + (max_loosely_1_right - baseline_loosely_1) * steer_ratio
+    loosely_2 = baseline_loosely_2 - (baseline_loosely_2 - min_loosely_2_right) * steer_ratio
+  elif lca_steer > 0:
+    # LEFT turn: scale from baseline to min values based on torque magnitude
+    curve_right = 0 # LEFT turn or STRAIGHT
+    steer_ratio = abs(lca_steer) / max_steer
+    loosely_1 = baseline_loosely_1 - (baseline_loosely_1 - min_loosely_1_left) * steer_ratio
+    loosely_2 = baseline_loosely_2 - (baseline_loosely_2 - min_loosely_2_left) * steer_ratio
+  else:
+    # Basically == 0
     loosely_1 = baseline_loosely_1
     loosely_2 = baseline_loosely_2
+
+  # Ensure integer values for CAN messages
+  loosely_1 = int(loosely_1)
+  loosely_2 = int(loosely_2)
 
   values = {
     'NEW_SIGNAL_3': 0,
