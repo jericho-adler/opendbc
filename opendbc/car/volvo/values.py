@@ -46,8 +46,13 @@ class VolvoPlatformConfig(PlatformConfig):
 
 class CAR(Platforms):
   VOLVO_XC40_RECHARGE = VolvoPlatformConfig(
-    [VolvoCarDocs("Volvo XC40 Recharge 2023")],
-    CarSpecs(mass=2030, wheelbase=2.702, steerRatio=15.8),
+    [VolvoCarDocs("Volvo XC40 Recharge 2021-2023")],
+    CarSpecs(
+      mass=2170,
+      wheelbase=2.702,
+      steerRatio=25.0,  # steerRatio 15.8, increased to 25.0 because openpilot is autolearning to ~30
+      centerToFrontRatio=0.52,
+    ),
   )
 
 
