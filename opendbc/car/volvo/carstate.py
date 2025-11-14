@@ -11,6 +11,9 @@ TransmissionType = structs.CarParams.TransmissionType
 class CarState(CarStateBase):
   def __init__(self, CP):
     super().__init__(CP)
+    self.cruise_enabled_prev = False
+    self.cruise_last_disabled_frame = 0
+    self.cruise_double_tap_active = False
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -46,8 +49,22 @@ class CarState(CarStateBase):
     # EPS status - placeholder until actual signal is found
     self.eps_active = True  # Assume EPS is active for now
 
-    # cruise
-    ret.cruiseState.enabled = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1 # Do not use the following, might be unavailable due to rain: cp_main.vl["VCU1"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
+    # cruise - double-tap detection (on-off-on within 500ms/50 frames)
+    cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1
+
+    # Detect on-off-on double-tap pattern
+    if cruise_raw and not self.cruise_enabled_prev:
+      # Just turned ON - check if we turned OFF recently (within 50 frames = 500ms)
+      if self.frame - self.cruise_last_disabled_frame <= 50:
+        self.cruise_double_tap_active = True
+    elif not cruise_raw and self.cruise_enabled_prev:
+      # Just turned OFF
+      self.cruise_last_disabled_frame = self.frame
+      self.cruise_double_tap_active = False
+
+    ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active
+    self.cruise_enabled_prev = cruise_raw
+
     ret.cruiseState.available = True  # TODO: Determine actual availability
     ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
     ret.cruiseState.nonAdaptive = False
