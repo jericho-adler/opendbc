@@ -80,6 +80,7 @@ class CarState(CarStateBase):
     self.msg_pscm = cp_party.vl['PSCM']
     self.msg_lca = cp_main.vl['LCA']
     self.msg_vcu1_pscm_control = cp_main.vl['VCU1_PSCM_CONTROL']
+    self.pilot_assist_engaged = cp_main.vl['VCU1']['CRUISE_OR_PILOT_ASSIST_ENGAGED'] == 1
 
     return ret
 

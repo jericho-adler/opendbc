@@ -39,7 +39,7 @@ class CarController(CarControllerBase):
       can_sends.append(create_lca_steering(self.packer, CC.latActive, apply_torque, CS.msg_lca))
       self.apply_torque_last = apply_torque
 
-      can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame))
+      can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, CS.pilot_assist_engaged))
 
     # VCU1_PSCM_CONTROL message at 67 Hz (send 2 out of every 3 frames = 66.67 Hz)
     if (self.frame % 3) < 2:

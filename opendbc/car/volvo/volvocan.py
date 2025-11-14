@@ -96,7 +96,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
 
   return packer.make_can_msg('LCA', 2, values)
 
-def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int):
+def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, pilot_assist_engaged: bool):
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
@@ -107,7 +107,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int):
     'BYTE_6': msg_pscm['BYTE_6'],
     'BYTE_7': msg_pscm['BYTE_7'],
   }
-  if lat_active:
+  if lat_active or pilot_assist_engaged:
     #values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
     values['DRIVER_INPUT_DEVIATION'] = 1 if frame % 2 == 0 else 0
     values['BYTE_3'] = 186 if frame % 2 == 0 else 154 # msg_pscm['BYTE_3']
