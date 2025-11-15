@@ -12,11 +12,6 @@ class CarController(CarControllerBase):
     self.packer = CANPacker(dbc_names[Bus.party])
     self.apply_torque_last = 0
 
-    # VCU1_PSCM_CONTROL timer state (218 kHz timers)
-    self.vcu1_pscm_control_timer_1 = 0
-    self.vcu1_pscm_control_timer_2 = 0
-    self.vcu1_pscm_control_timer_initialized = False
-
   def update(self, CC, CS, now_nanos):
     can_sends = []
     actuators = CC.actuators
@@ -43,27 +38,8 @@ class CarController(CarControllerBase):
 
     # VCU1_PSCM_CONTROL message at 67 Hz (send 2 out of every 3 frames = 66.67 Hz)
     if (self.frame % 3) < 2:
-      # Initialize timers from RX when both values are valid (> 0)
-      if not self.vcu1_pscm_control_timer_initialized:
-        timer_1_rx = CS.msg_vcu1_pscm_control['TIMER_1']
-        timer_2_rx = CS.msg_vcu1_pscm_control['TIMER_2']
-        if timer_1_rx > 0 and timer_2_rx > 0:
-          self.vcu1_pscm_control_timer_1 = int(timer_1_rx)
-          self.vcu1_pscm_control_timer_2 = int(timer_2_rx)
-          self.vcu1_pscm_control_timer_initialized = True
-
-      # Only send message after timers are initialized
-      if self.vcu1_pscm_control_timer_initialized:
-        # Send message with current timer values
-        can_sends.append(create_vcu1_pscm_control(self.packer, CC.latActive, CS.msg_vcu1_pscm_control,
-                                                  self.vcu1_pscm_control_timer_1, self.vcu1_pscm_control_timer_2))
-
-        # Increment timers for next message
-        # At 67 Hz, each message is ~15ms apart
-        # 218000 Hz * 0.015s ≈ 3270 counts per message
-        TIMER_INCREMENT = 3270
-        self.vcu1_pscm_control_timer_1 = (self.vcu1_pscm_control_timer_1 + TIMER_INCREMENT) & 0xFFFF  # 16-bit wraparound
-        self.vcu1_pscm_control_timer_2 = (self.vcu1_pscm_control_timer_2 + TIMER_INCREMENT) & 0xFFFF  # 16-bit wraparound
+      # Send message with current timer values
+      can_sends.append(create_vcu1_pscm_control(self.packer, CC.latActive, CS.msg_vcu1_pscm_control))
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
