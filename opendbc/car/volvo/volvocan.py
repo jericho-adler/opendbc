@@ -34,6 +34,17 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   elif lca_steer > 0:
     curve_right = 0
 
+  if lca_steer > 50: # Left turn
+    loosely_1 = 244
+    loosely_2 = 12
+  elif lca_steer < -50: # Right turn # TODO: Capture hard right turn
+    #loosely_1 = 217
+    #loosely_2 = 39
+    #loosely_1 = 9
+    #loosely_2 = 64
+    loosely_1 = 8
+    loosely_2 = 245
+
   values = {
     'NEW_SIGNAL_3': 0,
     'LCA_ENABLE_INV': 0 if lat_active else 1,
