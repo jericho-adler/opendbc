@@ -35,7 +35,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     curve_right = 0
 
   values = {
-    'NEW_SIGNAL_3': 0,
+    'NEW_SIGNAL_3': 2,
     'LCA_ENABLE_INV': 0 if lat_active else 1,
     'NEW_SIGNAL_1': 3,
     'LCA_STEER_LOOSELY_1': loosely_1 if lat_active else 0,
@@ -43,7 +43,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     'LCA_STEER_ACTIVE': 3 if lat_active else 0,
     'NEW_SIGNAL_7': 7,
     'LCA_STEER_LOOSELY_2': loosely_2 if lat_active else 0,
-    'NEW_SIGNAL_4': 25 if lat_active else 251, # ?
+    'NEW_SIGNAL_4': 39 if lat_active else 251, #
     'CURVE_RIGHT': curve_right,
     'NEW_SIGNAL_5': 3,
     'LCA_STEER': apply_torque if lat_active else 0,
