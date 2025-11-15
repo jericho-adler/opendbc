@@ -88,7 +88,8 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, pi
 
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: dict):
+def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: dict,
+                            timer_1: int, timer_2: int):
   """
   Create VCU1_PSCM_CONTROL message for Volvo CMA platform.
   This message enables PSCM to accept LCA commands.
@@ -97,6 +98,8 @@ def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: di
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_vcu1_pscm_control: Dictionary containing VCU1_PSCM_CONTROL message values
+    timer_1: 16-bit timer value (218 kHz, increments by ~3270 per message)
+    timer_2: 16-bit timer value (218 kHz, increments by ~3270 per message)
   """
   values = {
     'NEW_SIGNAL_3': msg_vcu1_pscm_control['NEW_SIGNAL_3'],
@@ -105,8 +108,8 @@ def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: di
     'NEW_SIGNAL_5': msg_vcu1_pscm_control['NEW_SIGNAL_5'],
     'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_INV'],
     'NEW_SIGNAL_4': msg_vcu1_pscm_control['NEW_SIGNAL_4'],
-    'TIMER_1': msg_vcu1_pscm_control['TIMER_1'],
-    'TIMER_2': msg_vcu1_pscm_control['TIMER_2'],
+    'TIMER_1': timer_1,
+    'TIMER_2': timer_2,
     'NEW_SIGNAL_8': msg_vcu1_pscm_control['NEW_SIGNAL_8'],
     'COUNTER_1': msg_vcu1_pscm_control['COUNTER_1'],
     'NEW_SIGNAL_7': msg_vcu1_pscm_control['NEW_SIGNAL_7'],
