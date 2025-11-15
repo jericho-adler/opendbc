@@ -56,7 +56,7 @@ class CarController(CarControllerBase):
       # Only send message after timers are initialized
       if self.vcu1_pscm_control_timer_initialized:
         # Send message with current timer values
-        can_sends.append(create_vcu1_pscm_control(self.packer, CC.latActive, CS.msg_vcu1_pscm_control,
+        can_sends.append(create_vcu1_pscm_control(self.packer, CC.latActive, apply_torque, CS.msg_vcu1_pscm_control,
                                                   self.vcu1_pscm_control_timer_1, self.vcu1_pscm_control_timer_2))
 
         # Increment timers for next message

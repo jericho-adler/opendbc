@@ -43,7 +43,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     'LCA_STEER_ACTIVE': 3 if lat_active else 0,
     'NEW_SIGNAL_7': 7,
     'LCA_STEER_LOOSELY_2': loosely_2 if lat_active else 0,
-    'NEW_SIGNAL_4': 39 if lat_active else 251, #
+    'NEW_SIGNAL_4': 39 if lat_active else 251, # Stock LCA increased from 35 to 39 steppedly when steering request was overriden by openpilot that couldn't steer enough
     'CURVE_RIGHT': curve_right,
     'NEW_SIGNAL_5': 3,
     'LCA_STEER': apply_torque if lat_active else 0,
@@ -88,7 +88,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, pi
 
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: dict,
+def create_vcu1_pscm_control(packer, lat_active: bool, apply_torque: int, msg_vcu1_pscm_control: dict,
                             timer_1: int, timer_2: int):
   """
   Create VCU1_PSCM_CONTROL message for Volvo CMA platform.
@@ -101,6 +101,12 @@ def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: di
     timer_1: 16-bit timer value (218 kHz, increments by ~3270 per message)
     timer_2: 16-bit timer value (218 kHz, increments by ~3270 per message)
   """
+  signal_9 = 128 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_9']
+  if lat_active:
+    if apply_torque > 0: # Left turn
+      signal_9 = 255
+    elif apply_torque < 0: # Right turn
+      signal_9 = 0
   values = {
     'NEW_SIGNAL_3': msg_vcu1_pscm_control['NEW_SIGNAL_3'],
     'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_RELATED'],
@@ -113,7 +119,7 @@ def create_vcu1_pscm_control(packer, lat_active: bool, msg_vcu1_pscm_control: di
     'NEW_SIGNAL_8': msg_vcu1_pscm_control['NEW_SIGNAL_8'],
     'COUNTER_1': msg_vcu1_pscm_control['COUNTER_1'],
     'NEW_SIGNAL_7': msg_vcu1_pscm_control['NEW_SIGNAL_7'],
-    'NEW_SIGNAL_9': msg_vcu1_pscm_control['NEW_SIGNAL_9'],
+    'NEW_SIGNAL_9': signal_9,
   }
 
   return packer.make_can_msg('VCU1_PSCM_CONTROL', 2, values)
