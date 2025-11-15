@@ -45,7 +45,7 @@ class CarState(CarStateBase):
     # TODO: Find actual steering torque signals in the DBC or reverse engineer them
     ret.steeringTorque = -cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']  # Driver torque (car right turn is negative, openpilot right turn is positive)
     #ret.steeringTorqueEps = 0  # EPS torque - placeholder until signal is found
-    ret.steeringPressed = abs(cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']) > CarControllerParams.STEER_DRIVER_ALLOWANCE
+    ret.steeringPressed = abs(cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']) > 2
 
     # EPS status - placeholder until actual signal is found
     self.eps_active = True  # Assume EPS is active for now
