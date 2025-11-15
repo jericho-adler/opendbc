@@ -14,6 +14,7 @@ class CarState(CarStateBase):
     self.cruise_enabled_prev = False
     self.cruise_last_disabled_frame = 0
     self.cruise_double_tap_active = False
+    self.CC_frame = 0 # CarController frame
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -55,11 +56,11 @@ class CarState(CarStateBase):
     # Detect on-off-on double-tap pattern
     if cruise_raw and not self.cruise_enabled_prev:
       # Just turned ON - check if we turned OFF recently (within 50 frames = 500ms)
-      if self.frame - self.cruise_last_disabled_frame <= 50:
+      if self.CC_frame - self.cruise_last_disabled_frame <= 50:
         self.cruise_double_tap_active = True
     elif not cruise_raw and self.cruise_enabled_prev:
       # Just turned OFF
-      self.cruise_last_disabled_frame = self.frame
+      self.cruise_last_disabled_frame = self.CC_frame
       self.cruise_double_tap_active = False
 
     ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active

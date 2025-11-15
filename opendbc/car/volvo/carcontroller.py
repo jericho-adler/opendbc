@@ -18,6 +18,7 @@ class CarController(CarControllerBase):
     self.vcu1_pscm_control_timer_initialized = False
 
   def update(self, CC, CS, now_nanos):
+    CS.CC_frame = self.frame
     can_sends = []
     actuators = CC.actuators
 
