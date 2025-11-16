@@ -93,6 +93,7 @@ class CarState(CarStateBase):
     # Store entire message dictionaries
     self.msg_pscm = cp_party.vl['PSCM']
     self.msg_lca = cp_main.vl['LCA']
+    self.msg_vcu1 = cp_main.vl['VCU1']
     self.msg_vcu1_pscm_control = cp_main.vl['VCU1_PSCM_CONTROL']
     self.pilot_assist_engaged = cp_main.vl['VCU1']['PILOT_ASSIST_ENGAGED'] == 1
 

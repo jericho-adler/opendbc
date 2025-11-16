@@ -123,3 +123,25 @@ def create_vcu1_pscm_control(packer, lat_active: bool, apply_torque: int, msg_vc
   }
 
   return packer.make_can_msg('VCU1_PSCM_CONTROL', 2, values)
+
+def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
+  """
+  Create VCU1 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
+
+  When lat_active=True, we set PILOT_ASSIST_ENGAGED=1 to make PSCM accept LCA commands,
+  even if the driver has disabled stock Pilot Assist.
+
+  Args:
+    packer: CAN packer instance
+    lat_active: Whether lateral control is active
+    msg_vcu1: Dictionary containing VCU1 message values from car
+  """
+  values = {
+    'COUNTER_1': msg_vcu1['COUNTER_1'],
+    'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'],
+    'COUNTER_2': msg_vcu1['COUNTER_2'],
+    'BRAKE_PEDAL_PRESSED_B': msg_vcu1['BRAKE_PEDAL_PRESSED_B'],
+    'BRAKE_PEDAL_PRESSED_A': msg_vcu1['BRAKE_PEDAL_PRESSED_A'],
+  }
+
+  return packer.make_can_msg('VCU1', 2, values)

@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_vcu1_pscm_control
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_vcu1_pscm_control, create_vcu1_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -41,6 +41,11 @@ class CarController(CarControllerBase):
       self.apply_torque_last = apply_torque
 
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, CS.pilot_assist_engaged))
+
+    # VCU1 message at 50 Hz (send every other frame = 50 Hz)
+    # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
+    if self.frame % 2 == 0:
+      can_sends.append(create_vcu1_message(self.packer, CC.latActive, CS.msg_vcu1))
 
     # VCU1_PSCM_CONTROL message at 67 Hz (send 2 out of every 3 frames = 66.67 Hz)
     if (self.frame % 3) < 2:
