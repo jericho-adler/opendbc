@@ -160,6 +160,19 @@ def checksum_vcu1_message(b1: int, b2: int, b5: int) -> int:
 
   return c & 0xFF
 
+def diff_dicts(a, b):
+  only_in_a = a.keys() - b.keys()
+  only_in_b = b.keys() - a.keys()
+  in_both = a.keys() & b.keys()
+
+  changed = {k: (a[k], b[k]) for k in in_both if a[k] != b[k]}
+
+  return {
+    "only_in_a": {k: a[k] for k in only_in_a},
+    "only_in_b": {k: b[k] for k in only_in_b},
+    "changed": changed,
+  }
+
 def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
   """
   Create VCU1 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
@@ -192,11 +205,24 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
         ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
         ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
   b2 = int(values['BYTE_2']) & 0xFF
+  # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
+  # raw = (physical - offset) / scale = (physical - 1) / -1
+  brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
   b5 = ((int(values['COUNTER_2']) & 0x0F) |
         ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
         ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
-        ((int(values['BRAKE_PEDAL_PRESSED_A']) & 0x01) << 7))
+        ((brake_pedal_a_raw & 0x01) << 7))
 
   values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
+
+  # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
+  if not lat_active and msg_vcu1['BYTE_0'] != 0:
+    if values != msg_vcu1:
+      print(msg_vcu1)
+      print(f"Values mismatch: {diff_dicts(values, msg_vcu1)}")
+      raise ValueError("Values mismatch")
+    if values['CHECKSUM'] != msg_vcu1['CHECKSUM']:
+      print(f"Checksum mismatch: {values['CHECKSUM']} != {msg_vcu1['CHECKSUM']}: b1={b1}, b2={b2}, b5={b5}")
+      raise ValueError("Checksum mismatch")
 
   return packer.make_can_msg('VCU1', 2, values)
