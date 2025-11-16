@@ -192,7 +192,10 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
         ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
         ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
   b2 = int(values['BYTE_2']) & 0xFF
-  b5 = (int(values['COUNTER_2']) & 0x0F) | ((int(values['NEW_SIGNAL_3']) & 0x0F) << 4)
+  b5 = ((int(values['COUNTER_2']) & 0x0F) |
+        ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
+        ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
+        ((int(values['BRAKE_PEDAL_PRESSED_A']) & 0x01) << 7))
 
   values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
 
