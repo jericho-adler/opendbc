@@ -50,7 +50,7 @@ class CAR(Platforms):
     CarSpecs(
       mass=2170,
       wheelbase=2.702,
-      steerRatio=30.0,  # steerRatio 15.8, increased to 30.0 because openpilot is autolearning to ~30 (if not higher)
+      steerRatio=15.8,
       centerToFrontRatio=0.52,
     ),
   )
