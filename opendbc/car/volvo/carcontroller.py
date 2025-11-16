@@ -53,7 +53,7 @@ class CarController(CarControllerBase):
       if not self.vcu1_pscm_control_timer_initialized:
         timer_1_rx = CS.msg_vcu1_pscm_control['TIMER_1']
         timer_2_rx = CS.msg_vcu1_pscm_control['TIMER_2']
-        if timer_1_rx > 0 and timer_2_rx > 0:
+        if True: # if timer_1_rx > 0 and timer_2_rx > 0:
           self.vcu1_pscm_control_timer_1 = int(timer_1_rx)
           self.vcu1_pscm_control_timer_2 = int(timer_2_rx)
           self.vcu1_pscm_control_timer_initialized = True
