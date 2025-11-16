@@ -185,7 +185,27 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     lat_active: Whether lateral control is active
     msg_vcu1: Dictionary containing VCU1 message values from car
   """
-  return packer.make_can_msg('VCU1', 2, msg_vcu1) # Temporary
+  if not lat_active: # Temporary
+    values = msg_vcu1
+    # Reconstruct bytes 1, 2, and 5 from signal values for checksum calculation
+    b1 = ((int(values['COUNTER_1']) & 0x0F) |
+          ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
+          ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
+    b2 = int(values['BYTE_2']) & 0xFF
+    # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
+    # raw = (physical - offset) / scale = (physical - 1) / -1
+    brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
+    b5 = ((int(values['COUNTER_2']) & 0x0F) |
+          ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
+          ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
+          ((brake_pedal_a_raw & 0x01) << 7))
+    values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
+    assert values['CHECKSUM'] == values['CHECKSUM']
+    # Temporary: May generate a DTC TODO Remove this
+    values['BYTE_2'] = 0
+    values['CHECKSUM'] = checksum_vcu1_message(b1, values['BYTE_2'], b5)
+    return packer.make_can_msg('VCU1', 2, values)
+
   values = {
     'BYTE_0': 24 if lat_active else msg_vcu1['BYTE_0'], # 24 always
     'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
