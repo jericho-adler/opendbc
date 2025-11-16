@@ -124,6 +124,42 @@ def create_vcu1_pscm_control(packer, lat_active: bool, apply_torque: int, msg_vc
 
   return packer.make_can_msg('VCU1_PSCM_CONTROL', 2, values)
 
+def checksum_vcu1_message(b1: int, b2: int, b5: int) -> int:
+  """
+  Compute the 8-bit checksum from Byte1, Byte2 and Byte5.
+
+  b1, b2, b5: integers 0..255
+  returns: checksum byte 0..255
+  """
+
+  # Masks for each checksum bit (bit 0 = LSB)
+  M1 = [0x42, 0x00, 0x00, 0x00,
+        0x42, 0x00, 0x00, 0x00]
+
+  M2 = [0x05, 0x00, 0x00, 0x00,
+        0x05, 0x00, 0x00, 0x00]
+
+  M5 = [0x83, 0x86, 0xCF, 0xCD,
+        0x09, 0x02, 0x44, 0x89]
+
+  def parity8(x: int) -> int:
+    """Return 1 if x has an odd number of bits set, else 0."""
+    x ^= x >> 4
+    x ^= x >> 2
+    x ^= x >> 1
+    return x & 1
+
+  c = 0
+  for bit in range(8):
+    p = (
+      parity8(b1 & M1[bit]) ^
+      parity8(b2 & M2[bit]) ^
+      parity8(b5 & M5[bit])
+    )
+    c |= (p << bit)
+
+  return c & 0xFF
+
 def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
   """
   Create VCU1 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
@@ -137,18 +173,27 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     msg_vcu1: Dictionary containing VCU1 message values from car
   """
   values = {
-    'BYTE_0': msg_vcu1['BYTE_0'], # 24 always
+    'BYTE_0': 24 if lat_active else msg_vcu1['BYTE_0'], # 24 always
     'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
     'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
     'BYTE_1_MSBS_3': msg_vcu1['BYTE_1_MSBS_3'], # Byte 1 [0:3]
-    'BYTE_2': msg_vcu1['BYTE_2'],
-    'NEW_SIGNAL_2': msg_vcu1['NEW_SIGNAL_2'],
+    'BYTE_2': msg_vcu1['BYTE_2'], # No idea what this is
+    'NEW_SIGNAL_2': 0 if lat_active else msg_vcu1['NEW_SIGNAL_2'],
     'COUNTER_2': msg_vcu1['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
-    'NEW_SIGNAL_3': msg_vcu1['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_3': 3 if lat_active else msg_vcu1['NEW_SIGNAL_3'],
     'BRAKE_PEDAL_PRESSED_B': msg_vcu1['BRAKE_PEDAL_PRESSED_B'],
     'BRAKE_PEDAL_PRESSED_A': msg_vcu1['BRAKE_PEDAL_PRESSED_A'],
     'CHECKSUM': msg_vcu1['CHECKSUM'], # Byte 6 is a checksum based on Bytes 1, 2, and 5 only
-    'BYTE_7': msg_vcu1['BYTE_7'],
+    'BYTE_7': 0 if lat_active else msg_vcu1['BYTE_7'],
   }
+
+  # Reconstruct bytes 1, 2, and 5 from signal values for checksum calculation
+  b1 = ((int(values['COUNTER_1']) & 0x0F) |
+        ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
+        ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
+  b2 = int(values['BYTE_2']) & 0xFF
+  b5 = (int(values['COUNTER_2']) & 0x0F) | ((int(values['NEW_SIGNAL_3']) & 0x0F) << 4)
+
+  values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
 
   return packer.make_can_msg('VCU1', 2, values)
