@@ -185,6 +185,7 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     lat_active: Whether lateral control is active
     msg_vcu1: Dictionary containing VCU1 message values from car
   """
+  return packer.make_can_msg('VCU1', 2, msg_vcu1) # Temporary
   values = {
     'BYTE_0': 24 if lat_active else msg_vcu1['BYTE_0'], # 24 always
     'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)

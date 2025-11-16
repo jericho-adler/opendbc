@@ -128,6 +128,13 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
     }
   }
 
+  if (msg->addr == VOLVO_VCU1) {
+    // VCU1 -> PSCM
+    if (msg->bus != VOLVO_PARTY_BUS) {
+      tx = false;  // Wrong bus
+    }
+  }
+
   return tx;
 }
 
@@ -141,7 +148,7 @@ static safety_config volvo_init(uint16_t param) {
     //{VOLVO_DRIVER_INPUT, VOLVO_MAIN_BUS, 8, .check_relay = true},  // Driver input message sent to main bus
     //{VOLVO_SAS, VOLVO_MAIN_BUS, 8, .check_relay = true},  // SAS message sent to main bus
     {VOLVO_VCU1_PSCM_CONTROL, VOLVO_PARTY_BUS, 8, .check_relay = true},  // VCU1_PSCM_CONTROL message sent to party bus
-    //{VOLVO_VCU1, VOLVO_PARTY_BUS, 8, .check_relay = true},  // VCU1 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
+    {VOLVO_VCU1, VOLVO_PARTY_BUS, 8, .check_relay = true},  // VCU1 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
   };
 
   // Define RX checks - include all messages present in route
