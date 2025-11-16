@@ -142,6 +142,10 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     'COUNTER_2': msg_vcu1['COUNTER_2'],
     'BRAKE_PEDAL_PRESSED_B': msg_vcu1['BRAKE_PEDAL_PRESSED_B'],
     'BRAKE_PEDAL_PRESSED_A': msg_vcu1['BRAKE_PEDAL_PRESSED_A'],
+    'NEW_SIGNAL_1': msg_vcu1['NEW_SIGNAL_1'], # 192 always
+    'NEW_SIGNAL_2': msg_vcu1['NEW_SIGNAL_2'],
+    'NEW_SIGNAL_3': msg_vcu1['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_4': msg_vcu1['NEW_SIGNAL_4'],
   }
 
   return packer.make_can_msg('VCU1', 2, values)
