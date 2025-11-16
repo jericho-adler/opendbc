@@ -45,7 +45,8 @@ class CarController(CarControllerBase):
     # VCU1 message at 50 Hz (send every other frame = 50 Hz)
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
     if self.frame % 2 == 0:
-      can_sends.append(create_vcu1_message(self.packer, CC.latActive, CS.msg_vcu1))
+      #can_sends.append(create_vcu1_message(self.packer, CC.latActive, CS.msg_vcu1))
+      pass
 
     # VCU1_PSCM_CONTROL message at 67 Hz (send 2 out of every 3 frames = 66.67 Hz)
     if (self.frame % 3) < 2:
