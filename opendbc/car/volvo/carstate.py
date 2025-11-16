@@ -66,7 +66,7 @@ class CarState(CarStateBase):
     ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active
     self.cruise_enabled_prev = cruise_raw
 
-    ret.cruiseState.enabled = cruise_raw # No more double-tap detection, uncomment if needed
+    ret.cruiseState.enabled = cruise_raw and not ret.gasPressed # No more double-tap detection, uncomment if needed
     ret.cruiseState.available = True  # TODO: Determine actual availability
     ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
     ret.cruiseState.nonAdaptive = False
