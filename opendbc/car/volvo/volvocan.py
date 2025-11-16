@@ -108,17 +108,17 @@ def create_vcu1_pscm_control(packer, lat_active: bool, apply_torque: int, msg_vc
     elif apply_torque < 0: # Right turn
       signal_9 = 0
   values = {
-    'NEW_SIGNAL_3': msg_vcu1_pscm_control['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_3': 0 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_3'],
     'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_RELATED'],
-    'NEW_SIGNAL_2': msg_vcu1_pscm_control['NEW_SIGNAL_2'],
-    'NEW_SIGNAL_5': msg_vcu1_pscm_control['NEW_SIGNAL_5'],
+    'NEW_SIGNAL_2': 0 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_2'],
+    'NEW_SIGNAL_5': 30 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_5'],
     'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_INV'],
-    'NEW_SIGNAL_4': msg_vcu1_pscm_control['NEW_SIGNAL_4'],
+    'NEW_SIGNAL_4': 3 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_4'],
     'TIMER_1': timer_1,
     'TIMER_2': timer_2,
-    'NEW_SIGNAL_8': msg_vcu1_pscm_control['NEW_SIGNAL_8'],
+    'NEW_SIGNAL_8': 1 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_8'],
     'COUNTER_1': msg_vcu1_pscm_control['COUNTER_1'],
-    'NEW_SIGNAL_7': msg_vcu1_pscm_control['NEW_SIGNAL_7'],
+    'NEW_SIGNAL_7': 3 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_7'],
     'NEW_SIGNAL_9': signal_9,
   }
 
