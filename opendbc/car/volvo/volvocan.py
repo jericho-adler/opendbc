@@ -191,7 +191,7 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     b1 = ((int(values['COUNTER_1']) & 0x0F) |
           ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
           ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
-    b2 = int(values['BYTE_2']) & 0xFF
+    b2 = int(values['CHECKSUM_2']) & 0xFF
     # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
     # raw = (physical - offset) / scale = (physical - 1) / -1
     brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
@@ -202,8 +202,8 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
     assert values['CHECKSUM'] == values['CHECKSUM']
     # Temporary: May generate a DTC TODO Remove this
-    values['BYTE_2'] = 0
-    values['CHECKSUM'] = checksum_vcu1_message(b1, values['BYTE_2'], b5)
+    #values['BYTE_2'] = 0
+    #values['CHECKSUM'] = checksum_vcu1_message(b1, values['BYTE_2'], b5)
     return packer.make_can_msg('VCU1', 2, values)
 
   values = {
@@ -211,7 +211,7 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
     'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
     'BYTE_1_MSBS_3': msg_vcu1['BYTE_1_MSBS_3'], # Byte 1 [0:3]
-    'BYTE_2': msg_vcu1['BYTE_2'], # No idea what this is
+    'CHECKSUM_2': msg_vcu1['CHECKSUM_2'], # Checksum, unknown TODO
     'NEW_SIGNAL_2': 0 if lat_active else msg_vcu1['NEW_SIGNAL_2'],
     'COUNTER_2': msg_vcu1['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
     'NEW_SIGNAL_3': 3 if lat_active else msg_vcu1['NEW_SIGNAL_3'],
@@ -225,7 +225,7 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
   b1 = ((int(values['COUNTER_1']) & 0x0F) |
         ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
         ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
-  b2 = int(values['BYTE_2']) & 0xFF
+  b2 = int(values['CHECKSUM_2']) & 0xFF
   # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
   # raw = (physical - offset) / scale = (physical - 1) / -1
   brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
