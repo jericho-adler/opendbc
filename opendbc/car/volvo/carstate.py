@@ -38,7 +38,7 @@ class CarState(CarStateBase):
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel
-    ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR']
+    ret.steeringAngleDeg = -cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR'] # openpilot expects a negative value for a right turn
     #ret.steeringAngleDeg = cp_party.vl['SAS']['SAS_ANGLE_SENSOR']
 
     # For torque-based control, we need steering torque feedback

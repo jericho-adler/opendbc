@@ -65,8 +65,8 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
   // Party bus (bus 2) messages - BCM2, SAS, PSCM, EGSM
   if (msg->bus == VOLVO_PARTY_BUS) {
 
-    // Update steering angle from SAS
-    if (msg->addr == VOLVO_SAS) {
+    // Update steering angle from SAS - Deprecated: Use PSCM instead
+    /*if (msg->addr == VOLVO_SAS) {
       // DBC: SG_ SAS_ANGLE_SENSOR : 6|15@0- (-0.05596,0)
       // carstate.py uses SAS (not PSCM) for steering angle
       // Bit position 6, 15 bits, signed, little endian
@@ -75,7 +75,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
         angle_raw = -angle_raw;
       }
       update_sample(&angle_meas, angle_raw);
-    }
+    }*/
 
     // Update driver steering input from PSCM
     if (msg->addr == VOLVO_PSCM) {
@@ -84,6 +84,10 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
       // Bit position 47, 8 bits, signed
       int driver_input = msg->data[5];
       update_sample(&torque_driver, driver_input);
+      // The following might not be right, probably needs to be re-made, tests don't catch any inconsistencies with CarState (no checks are made)
+      /*uint8_t byte0_masked = msg->data[0] & 0x7F;   // keep only lower 7 bits
+      uint16_t combined = ((uint16_t)byte0_masked << 8) | msg->data[1];
+      update_sample(&angle_meas, -(int16_t)combined); // openpilot excepts a right turn to be negative*/
     }
   }
 }
