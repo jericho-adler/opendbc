@@ -137,15 +137,18 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     msg_vcu1: Dictionary containing VCU1 message values from car
   """
   values = {
-    'COUNTER_1': msg_vcu1['COUNTER_1'],
-    'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'],
-    'COUNTER_2': msg_vcu1['COUNTER_2'],
+    'BYTE_0': msg_vcu1['BYTE_0'], # 24 always
+    'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
+    'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
+    'BYTE_1_MSBS_3': msg_vcu1['BYTE_1_MSBS_3'], # Byte 1 [0:3]
+    'BYTE_2': msg_vcu1['BYTE_2'],
+    'NEW_SIGNAL_2': msg_vcu1['NEW_SIGNAL_2'],
+    'COUNTER_2': msg_vcu1['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
+    'NEW_SIGNAL_3': msg_vcu1['NEW_SIGNAL_3'],
     'BRAKE_PEDAL_PRESSED_B': msg_vcu1['BRAKE_PEDAL_PRESSED_B'],
     'BRAKE_PEDAL_PRESSED_A': msg_vcu1['BRAKE_PEDAL_PRESSED_A'],
-    'NEW_SIGNAL_1': msg_vcu1['NEW_SIGNAL_1'], # 192 always
-    'NEW_SIGNAL_2': msg_vcu1['NEW_SIGNAL_2'],
-    'NEW_SIGNAL_3': msg_vcu1['NEW_SIGNAL_3'],
-    'NEW_SIGNAL_4': msg_vcu1['NEW_SIGNAL_4'],
+    'CHECKSUM': msg_vcu1['CHECKSUM'], # Byte 6 is a checksum based on Bytes 1, 2, and 5 only
+    'BYTE_7': msg_vcu1['BYTE_7'],
   }
 
   return packer.make_can_msg('VCU1', 2, values)
