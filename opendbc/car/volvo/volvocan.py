@@ -180,21 +180,25 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
         ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
         ((brake_pedal_a_raw & 0x01) << 7))
 
-  values['CHECKSUM'] = checksum_lca_2_message(b1, b2, b5)
+  b0 = int(values['BYTE_0']) # Used for checksum 1 and 2
+
+  values['CHECKSUM'] = checksum_lca_2_message(b0, b5)
 
   # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
-  if not lat_active and msg_lca_2['BYTE_0'] != 0:
+  if not lat_active:
     #assert values['CHECKSUM'] == msg_lca_2['CHECKSUM']
     if values['CHECKSUM'] != msg_lca_2['CHECKSUM']:
       carlog.warning("[volvocan.py] LCA_2 CHECKSUM mismatch")
+      print(f"b0={b0}, b1={b1}, b2={b2}, b5={b5}, calculated={values['CHECKSUM']}, expected={msg_lca_2['CHECKSUM']}")
+      #assert False
 
   # Checksum 2
-  b0 = int(values['BYTE_0'])
   b1 = (int(values['BYTE_1_MSBS_3']) & 0b111) << 5 | (int(values['PILOT_ASSIST_ENGAGED']) & 0b1) << 4 | (int(values['COUNTER_1']) & 0b1111)
   checksum_2 = checksum_2_0x69_message(b0, b1)
   values['CHECKSUM_2'] = checksum_2
-  if not lat_active and msg_lca_2['BYTE_0'] != 0:
+  if not lat_active:
     if values['CHECKSUM_2'] != msg_lca_2['CHECKSUM_2']:
       carlog.warning("[volvocan.py] LCA_2 CHECKSUM_2 mismatch")
-
+      print(f"b0={b0}, b1={b1}, calculated={values['CHECKSUM_2']}, expected={msg_lca_2['CHECKSUM_2']}")
+      #assert False
   return packer.make_can_msg('LCA_2', 2, values)
