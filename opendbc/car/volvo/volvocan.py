@@ -74,8 +74,8 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, pi
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
-    'BYTE_2': msg_pscm['BYTE_2'],
-    'BYTE_3': msg_pscm['BYTE_3'],
+    'HANDS_ON_STEERING_WHEEL_A': msg_pscm['HANDS_ON_STEERING_WHEEL_A'],
+    'HANDS_ON_STEERING_WHEEL_B': msg_pscm['HANDS_ON_STEERING_WHEEL_B'],
     'BYTE_4': msg_pscm['BYTE_4'],
     'DRIVER_INPUT_DEVIATION': msg_pscm['DRIVER_INPUT_DEVIATION'],
     'BYTE_6': msg_pscm['BYTE_6'],
@@ -84,8 +84,8 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, pi
   if lat_active or pilot_assist_engaged:
     #values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
     values['DRIVER_INPUT_DEVIATION'] = 1 if frame % 2 == 0 else 0
-    values['BYTE_3'] = 186 if frame % 2 == 0 else 154 # msg_pscm['BYTE_3']
-    values['BYTE_2'] = 195 if frame % 2 == 0 else 249 # msg_pscm['BYTE_2']
+    values['HANDS_ON_STEERING_WHEEL_B'] = 186 if frame % 2 == 0 else 154 # msg_pscm['HANDS_ON_STEERING_WHEEL_B']
+    values['HANDS_ON_STEERING_WHEEL_A'] = 195 if frame % 2 == 0 else 249 # msg_pscm['HANDS_ON_STEERING_WHEEL_A']
 
   return packer.make_can_msg('PSCM', 0, values)
 
