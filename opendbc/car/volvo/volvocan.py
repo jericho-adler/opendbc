@@ -116,8 +116,8 @@ def create_lca_3_control(packer, lat_active: bool, apply_torque: int, msg_lca_3:
     'NEW_SIGNAL_5': 30 if lat_active else msg_lca_3['NEW_SIGNAL_5'],
     'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_lca_3['LCA_ACCEPT_COMMANDS_INV'],
     'NEW_SIGNAL_4': 3 if lat_active else msg_lca_3['NEW_SIGNAL_4'],
-    'TIMER_1': timer_1,
-    'TIMER_2': timer_2,
+    'TIMER_1': msg_lca_3['TIMER_1'], #timer_1,
+    'TIMER_2': msg_lca_3['TIMER_2'], #timer_2,
     'NEW_SIGNAL_8': 1 if lat_active else msg_lca_3['NEW_SIGNAL_8'],
     'COUNTER_1': msg_lca_3['COUNTER_1'],
     'NEW_SIGNAL_7': 3 if lat_active else msg_lca_3['NEW_SIGNAL_7'],
@@ -151,6 +151,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
     lat_active: Whether lateral control is active
     msg_lca_2: Dictionary containing LCA_2 message values from car
   """
+  return packer.make_can_msg('LCA_2', 2, msg_lca_2) # Temporary
 
   values = {
     'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
