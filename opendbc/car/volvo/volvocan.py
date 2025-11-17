@@ -156,7 +156,7 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
     'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
     'BYTE_1_MSBS_3': msg_vcu1['BYTE_1_MSBS_3'], # Byte 1 [0:3]
-    'CHECKSUM_2': msg_vcu1['CHECKSUM_2'], # Checksum, unknown TODO
+    'CHECKSUM_2': msg_vcu1['CHECKSUM_2'], # Checksum on bytes 0 and 1
     'NEW_SIGNAL_2': 0 if lat_active else msg_vcu1['NEW_SIGNAL_2'],
     'COUNTER_2': msg_vcu1['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
     'NEW_SIGNAL_3': 3 if lat_active else msg_vcu1['NEW_SIGNAL_3'],
