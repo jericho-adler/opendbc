@@ -173,6 +173,81 @@ def diff_dicts(a, b):
     "changed": changed,
   }
 
+def checksum_2_0x69_message(b0: int, b1: int) -> int:
+  """
+  Compute checksum byte (b2) for CAN ID 0x69 based on bytes b0 and b1.
+
+  Args:
+      b0: First data byte of the 0x69 frame (0–255).
+      b1: Second data byte of the 0x69 frame (0–255).
+
+  Returns:
+      The checksum byte (0–255) that should go in position b2.
+  """
+  b0 &= 0xFF
+  b1 &= 0xFF
+
+  c = 0
+
+  # bit 0 of b2
+  c |= ( ((b0 >> 0) & 1)
+       ^ ((b1 >> 2) & 1)
+       ^ ((b1 >> 3) & 1)
+       ^ ((b1 >> 4) & 1) ) << 0
+
+  # bit 1 of b2
+  c |= ( ((b0 >> 1) & 1)
+       ^ ((b0 >> 3) & 1)
+       ^ ((b1 >> 0) & 1)
+       ^ ((b1 >> 3) & 1)
+       ^ ((b1 >> 6) & 1) ) << 1
+
+  # bit 2 of b2
+  c |= ( ((b0 >> 0) & 1)
+       ^ ((b0 >> 3) & 1)
+       ^ ((b1 >> 1) & 1)
+       ^ ((b1 >> 2) & 1)
+       ^ ((b1 >> 3) & 1)
+       ^ ((b1 >> 4) & 1)
+       ^ ((b1 >> 6) & 1) ) << 2
+
+  # bit 3 of b2
+  c |= ( ((b0 >> 0) & 1)
+       ^ ((b0 >> 1) & 1)
+       ^ ((b1 >> 0) & 1)
+       ^ ((b1 >> 4) & 1)
+       ^ ((b1 >> 6) & 1) ) << 3
+
+  # bit 4 of b2
+  c |= ( ((b0 >> 0) & 1)
+       ^ ((b0 >> 1) & 1)
+       ^ ((b0 >> 3) & 1)
+       ^ ((b1 >> 1) & 1)
+       ^ ((b1 >> 2) & 1)
+       ^ ((b1 >> 3) & 1)
+       ^ ((b1 >> 4) & 1) ) << 4
+
+  # bit 5 of b2
+  c |= ( ((b0 >> 1) & 1)
+       ^ ((b1 >> 0) & 1)
+       ^ ((b1 >> 2) & 1)
+       ^ ((b1 >> 3) & 1) ) << 5
+
+  # bit 6 of b2
+  c |= ( ((b0 >> 3) & 1)
+       ^ ((b1 >> 0) & 1)
+       ^ ((b1 >> 1) & 1)
+       ^ ((b1 >> 3) & 1)
+       ^ ((b1 >> 6) & 1) ) << 6
+
+  # bit 7 of b2
+  c |= ( ((b0 >> 3) & 1)
+       ^ ((b1 >> 1) & 1)
+       ^ ((b1 >> 2) & 1)
+       ^ ((b1 >> 4) & 1) ) << 7
+
+  return c & 0xFF
+
 def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
   """
   Create VCU1 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
@@ -185,26 +260,6 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
     lat_active: Whether lateral control is active
     msg_vcu1: Dictionary containing VCU1 message values from car
   """
-  if not lat_active: # Temporary
-    values = msg_vcu1
-    # Reconstruct bytes 1, 2, and 5 from signal values for checksum calculation
-    b1 = ((int(values['COUNTER_1']) & 0x0F) |
-          ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
-          ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
-    b2 = int(values['CHECKSUM_2']) & 0xFF
-    # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
-    # raw = (physical - offset) / scale = (physical - 1) / -1
-    brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
-    b5 = ((int(values['COUNTER_2']) & 0x0F) |
-          ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
-          ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
-          ((brake_pedal_a_raw & 0x01) << 7))
-    values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
-    assert values['CHECKSUM'] == values['CHECKSUM']
-    # Temporary: May generate a DTC TODO Remove this
-    #values['BYTE_2'] = 0
-    #values['CHECKSUM'] = checksum_vcu1_message(b1, values['BYTE_2'], b5)
-    return packer.make_can_msg('VCU1', 2, values)
 
   values = {
     'BYTE_0': 24 if lat_active else msg_vcu1['BYTE_0'], # 24 always
@@ -238,12 +293,14 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
 
   # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
   if not lat_active and msg_vcu1['BYTE_0'] != 0:
-    if values != msg_vcu1:
-      print(msg_vcu1)
-      print(f"Values mismatch: {diff_dicts(values, msg_vcu1)}")
-      raise ValueError("Values mismatch")
-    if values['CHECKSUM'] != msg_vcu1['CHECKSUM']:
-      print(f"Checksum mismatch: {values['CHECKSUM']} != {msg_vcu1['CHECKSUM']}: b1={b1}, b2={b2}, b5={b5}")
-      raise ValueError("Checksum mismatch")
+    assert values['CHECKSUM'] == msg_vcu1['CHECKSUM']
+
+  # Checksum 2
+  b0 = int(values['BYTE_0'])
+  b1 = (int(values['BYTE_1_MSBS_3']) & 0b111) << 5 | (int(values['PILOT_ASSIST_ENGAGED']) & 0b1) << 4 | (int(values['COUNTER_1']) & 0b1111)
+  checksum_2 = checksum_2_0x69_message(b0, b1)
+  values['CHECKSUM_2'] = checksum_2
+  if not lat_active and msg_vcu1['BYTE_0'] != 0:
+    assert values['CHECKSUM_2'] == msg_vcu1['CHECKSUM_2']
 
   return packer.make_can_msg('VCU1', 2, values)
