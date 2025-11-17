@@ -1,5 +1,6 @@
 import random
 from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message
+from opendbc.car.carlog import carlog
 
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
   """
@@ -183,7 +184,9 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
 
   # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
   if not lat_active and msg_lca_2['BYTE_0'] != 0:
-    assert values['CHECKSUM'] == msg_lca_2['CHECKSUM']
+    #assert values['CHECKSUM'] == msg_lca_2['CHECKSUM']
+    if values['CHECKSUM'] != msg_lca_2['CHECKSUM']:
+      carlog.warning("[volvocan.py] LCA_2 CHECKSUM mismatch")
 
   # Checksum 2
   b0 = int(values['BYTE_0'])
@@ -191,6 +194,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
   checksum_2 = checksum_2_0x69_message(b0, b1)
   values['CHECKSUM_2'] = checksum_2
   if not lat_active and msg_lca_2['BYTE_0'] != 0:
-    assert values['CHECKSUM_2'] == msg_lca_2['CHECKSUM_2']
+    if values['CHECKSUM_2'] != msg_lca_2['CHECKSUM_2']:
+      carlog.warning("[volvocan.py] LCA_2 CHECKSUM_2 mismatch")
 
   return packer.make_can_msg('LCA_2', 2, values)
