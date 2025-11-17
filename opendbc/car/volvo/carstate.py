@@ -53,17 +53,25 @@ class CarState(CarStateBase):
     # cruise - double-tap detection (on-off-on within 500ms/50 frames / 1000ms/100 frames)
     cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1
 
-    # Detect on-off-on double-tap pattern
-    if cruise_raw and not self.cruise_enabled_prev:
-      # Just turned ON - check if we turned OFF recently (within 100 frames = 1000ms)
-      if self.CC_frame - self.cruise_last_disabled_frame <= 100:
-        self.cruise_double_tap_active = True
-    elif not cruise_raw and self.cruise_enabled_prev:
-      # Just turned OFF
-      self.cruise_last_disabled_frame = self.CC_frame
-      self.cruise_double_tap_active = False
+    # Check if double-tap cruise feature is enabled (bit 0 of alternativeExperience)
+    use_double_tap = bool(self.CP.alternativeExperience & 1)
 
-    ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active
+    if use_double_tap:
+      # Detect on-off-on double-tap pattern
+      if cruise_raw and not self.cruise_enabled_prev:
+        # Just turned ON - check if we turned OFF recently (within 100 frames = 1000ms)
+        if self.CC_frame - self.cruise_last_disabled_frame <= 100:
+          self.cruise_double_tap_active = True
+      elif not cruise_raw and self.cruise_enabled_prev:
+        # Just turned OFF
+        self.cruise_last_disabled_frame = self.CC_frame
+        self.cruise_double_tap_active = False
+
+      ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active
+    else:
+      # Single-tap engagement (immediate engagement when cruise is pressed)
+      ret.cruiseState.enabled = cruise_raw
+
     self.cruise_enabled_prev = cruise_raw
 
     #ret.cruiseState.enabled = cruise_raw and not ret.gasPressed # No more double-tap detection, uncomment if needed

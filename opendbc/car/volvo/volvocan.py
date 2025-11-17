@@ -151,7 +151,6 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
     lat_active: Whether lateral control is active
     msg_lca_2: Dictionary containing LCA_2 message values from car
   """
-  return packer.make_can_msg('LCA_2', 2, msg_lca_2) # Temporary
 
   values = {
     'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
