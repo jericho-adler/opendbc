@@ -1,5 +1,5 @@
 import random
-from opendbc.car.volvo.helpers import checksum_vcu1_message, checksum_2_0x69_message
+from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message
 
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
   """
@@ -89,41 +89,41 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, pi
 
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_vcu1_pscm_control(packer, lat_active: bool, apply_torque: int, msg_vcu1_pscm_control: dict,
+def create_lca_3_control(packer, lat_active: bool, apply_torque: int, msg_lca_3: dict,
                             timer_1: int, timer_2: int):
   """
-  Create VCU1_PSCM_CONTROL message for Volvo CMA platform.
+  Create LCA_3 message for Volvo CMA platform.
   This message enables PSCM to accept LCA commands.
 
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    msg_vcu1_pscm_control: Dictionary containing VCU1_PSCM_CONTROL message values
+    msg_lca_3: Dictionary containing LCA_3 message values
     timer_1: 16-bit timer value (218 kHz, increments by ~3270 per message)
     timer_2: 16-bit timer value (218 kHz, increments by ~3270 per message)
   """
-  signal_9 = 128 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_9']
+  signal_9 = 128 if lat_active else msg_lca_3['NEW_SIGNAL_9']
   if lat_active:
     if apply_torque > 0: # Left turn
       signal_9 = 255
     elif apply_torque < 0: # Right turn
       signal_9 = 0
   values = {
-    'NEW_SIGNAL_3': 0 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_3'],
-    'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_RELATED'],
-    'NEW_SIGNAL_2': 0 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_2'],
-    'NEW_SIGNAL_5': 30 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_5'],
-    'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_vcu1_pscm_control['LCA_ACCEPT_COMMANDS_INV'],
-    'NEW_SIGNAL_4': 3 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_4'],
+    'NEW_SIGNAL_3': 0 if lat_active else msg_lca_3['NEW_SIGNAL_3'],
+    'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_lca_3['LCA_ACCEPT_COMMANDS_RELATED'],
+    'NEW_SIGNAL_2': 0 if lat_active else msg_lca_3['NEW_SIGNAL_2'],
+    'NEW_SIGNAL_5': 30 if lat_active else msg_lca_3['NEW_SIGNAL_5'],
+    'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_lca_3['LCA_ACCEPT_COMMANDS_INV'],
+    'NEW_SIGNAL_4': 3 if lat_active else msg_lca_3['NEW_SIGNAL_4'],
     'TIMER_1': timer_1,
     'TIMER_2': timer_2,
-    'NEW_SIGNAL_8': 1 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_8'],
-    'COUNTER_1': msg_vcu1_pscm_control['COUNTER_1'],
-    'NEW_SIGNAL_7': 3 if lat_active else msg_vcu1_pscm_control['NEW_SIGNAL_7'],
+    'NEW_SIGNAL_8': 1 if lat_active else msg_lca_3['NEW_SIGNAL_8'],
+    'COUNTER_1': msg_lca_3['COUNTER_1'],
+    'NEW_SIGNAL_7': 3 if lat_active else msg_lca_3['NEW_SIGNAL_7'],
     'NEW_SIGNAL_9': signal_9,
   }
 
-  return packer.make_can_msg('VCU1_PSCM_CONTROL', 2, values)
+  return packer.make_can_msg('LCA_3', 2, values)
 
 def diff_dicts(a, b):
   only_in_a = a.keys() - b.keys()
@@ -138,9 +138,9 @@ def diff_dicts(a, b):
     "changed": changed,
   }
 
-def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
+def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
   """
-  Create VCU1 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
+  Create LCA_2 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
 
   When lat_active=True, we set PILOT_ASSIST_ENGAGED=1 to make PSCM accept LCA commands,
   even if the driver has disabled stock Pilot Assist.
@@ -148,22 +148,22 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    msg_vcu1: Dictionary containing VCU1 message values from car
+    msg_lca_2: Dictionary containing LCA_2 message values from car
   """
 
   values = {
-    'BYTE_0': 24 if lat_active else msg_vcu1['BYTE_0'], # 24 always
-    'COUNTER_1': msg_vcu1['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
-    'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_vcu1['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
-    'BYTE_1_MSBS_3': msg_vcu1['BYTE_1_MSBS_3'], # Byte 1 [0:3]
-    'CHECKSUM_2': msg_vcu1['CHECKSUM_2'], # Checksum on bytes 0 and 1
-    'NEW_SIGNAL_2': 0 if lat_active else msg_vcu1['NEW_SIGNAL_2'],
-    'COUNTER_2': msg_vcu1['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
-    'NEW_SIGNAL_3': 3 if lat_active else msg_vcu1['NEW_SIGNAL_3'],
-    'BRAKE_PEDAL_PRESSED_B': msg_vcu1['BRAKE_PEDAL_PRESSED_B'],
-    'BRAKE_PEDAL_PRESSED_A': msg_vcu1['BRAKE_PEDAL_PRESSED_A'],
-    'CHECKSUM': msg_vcu1['CHECKSUM'], # Byte 6 is a checksum based on Bytes 1, 2, and 5 only
-    'BYTE_7': 0 if lat_active else msg_vcu1['BYTE_7'],
+    'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
+    'COUNTER_1': msg_lca_2['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
+    'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_lca_2['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
+    'BYTE_1_MSBS_3': msg_lca_2['BYTE_1_MSBS_3'], # Byte 1 [0:3]
+    'CHECKSUM_2': msg_lca_2['CHECKSUM_2'], # Checksum on bytes 0 and 1
+    'NEW_SIGNAL_2': 0 if lat_active else msg_lca_2['NEW_SIGNAL_2'],
+    'COUNTER_2': msg_lca_2['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
+    'NEW_SIGNAL_3': 3 if lat_active else msg_lca_2['NEW_SIGNAL_3'],
+    'BRAKE_PEDAL_PRESSED_B': msg_lca_2['BRAKE_PEDAL_PRESSED_B'],
+    'BRAKE_PEDAL_PRESSED_A': msg_lca_2['BRAKE_PEDAL_PRESSED_A'],
+    'CHECKSUM': msg_lca_2['CHECKSUM'], # Byte 6 is a checksum based on Bytes 1, 2, and 5 only
+    'BYTE_7': 0 if lat_active else msg_lca_2['BYTE_7'],
   }
 
   # Reconstruct bytes 1, 2, and 5 from signal values for checksum calculation
@@ -179,18 +179,18 @@ def create_vcu1_message(packer, lat_active: bool, msg_vcu1: dict):
         ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
         ((brake_pedal_a_raw & 0x01) << 7))
 
-  values['CHECKSUM'] = checksum_vcu1_message(b1, b2, b5)
+  values['CHECKSUM'] = checksum_lca_2_message(b1, b2, b5)
 
   # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
-  if not lat_active and msg_vcu1['BYTE_0'] != 0:
-    assert values['CHECKSUM'] == msg_vcu1['CHECKSUM']
+  if not lat_active and msg_lca_2['BYTE_0'] != 0:
+    assert values['CHECKSUM'] == msg_lca_2['CHECKSUM']
 
   # Checksum 2
   b0 = int(values['BYTE_0'])
   b1 = (int(values['BYTE_1_MSBS_3']) & 0b111) << 5 | (int(values['PILOT_ASSIST_ENGAGED']) & 0b1) << 4 | (int(values['COUNTER_1']) & 0b1111)
   checksum_2 = checksum_2_0x69_message(b0, b1)
   values['CHECKSUM_2'] = checksum_2
-  if not lat_active and msg_vcu1['BYTE_0'] != 0:
-    assert values['CHECKSUM_2'] == msg_vcu1['CHECKSUM_2']
+  if not lat_active and msg_lca_2['BYTE_0'] != 0:
+    assert values['CHECKSUM_2'] == msg_lca_2['CHECKSUM_2']
 
-  return packer.make_can_msg('VCU1', 2, values)
+  return packer.make_can_msg('LCA_2', 2, values)

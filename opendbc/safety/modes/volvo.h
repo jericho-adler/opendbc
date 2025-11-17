@@ -5,14 +5,14 @@
 // Volvo CMA platform CAN message addresses
 #define VOLVO_LCA_STEER           0x58U    // TX from VCU1 to PSCM, LCA steering command (0x58)
 #define VOLVO_BUS1_SPEED          0x70U   // RX from BCM, vehicle speed (BUS1_SPEED)
-#define VOLVO_VCU1                0x69U   // RX from BCM, brake pedal, cruise state
+#define VOLVO_LCA_2               0x69U   // RX from BCM, brake pedal, cruise state
 #define VOLVO_SAS                 0x55U    // RX from SAS, steering angle sensor
 #define VOLVO_PSCM                0x16U    // RX from PSCM, driver steering input
 #define VOLVO_GEAR_POSITION       0x80U   // RX from transmission, gear position
 #define VOLVO_ECM_1               0x250U   // RX from ECM, accelerator pedal position (0x250)
 #define VOLVO_DRIVER_INPUT        0x15U
 #define VOLVO_BUS1_CRUISE_CONTROL 0x340U   // RX from BCM, cruise control state (BUS1_CRUISE_CONTROL)
-#define VOLVO_VCU1_PSCM_CONTROL   0x57U   // TX from VCU1 to PSCM
+#define VOLVO_LCA_3               0x57U   // TX from VCU1 to PSCM
 
 // CAN bus definitions for Volvo CMA platform
 // Using same naming as carstate.py for consistency: main, pt, party
@@ -26,7 +26,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
   // Main bus (bus 0) messages
   if (msg->bus == VOLVO_MAIN_BUS) {
     // Update brake pedal and cruise state from BCM2
-    if (msg->addr == VOLVO_VCU1) {
+    if (msg->addr == VOLVO_LCA_2) {
       // DBC: SG_ BRAKE_PEDAL_PRESSED_A : 47|1@0+ (-1,1) - inverted in DBC, so we invert raw bit
       // DBC: SG_ BRAKE_PEDAL_PRESSED_B : 46|1@0+ (1,0) - not inverted
       //bool brake_a = !((msg->data[5] >> 7) & 1U); // Raw bit, active low (DBC inverts it)
@@ -128,8 +128,8 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
     }
   }
 
-  if (msg->addr == VOLVO_VCU1) {
-    // VCU1 -> PSCM
+  if (msg->addr == VOLVO_LCA_2) {
+    // LCA_2 -> PSCM
     if (msg->bus != VOLVO_PARTY_BUS) {
       tx = false;  // Wrong bus
     }
@@ -147,22 +147,22 @@ static safety_config volvo_init(uint16_t param) {
     {VOLVO_PSCM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // PSCM message sent to main bus (relay from party bus)
     //{VOLVO_DRIVER_INPUT, VOLVO_MAIN_BUS, 8, .check_relay = true},  // Driver input message sent to main bus
     //{VOLVO_SAS, VOLVO_MAIN_BUS, 8, .check_relay = true},  // SAS message sent to main bus
-    {VOLVO_VCU1_PSCM_CONTROL, VOLVO_PARTY_BUS, 8, .check_relay = true},  // VCU1_PSCM_CONTROL message sent to party bus
-    {VOLVO_VCU1, VOLVO_PARTY_BUS, 8, .check_relay = true},  // VCU1 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
+    {VOLVO_LCA_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_3 message sent to party bus
+    {VOLVO_LCA_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_2 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
   };
 
   // Define RX checks - include all messages present in route
   static RxCheck volvo_rx_checks[] = {
     {.msg = {{VOLVO_GEAR_POSITION, VOLVO_MAIN_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // Using bus 2
     {.msg = {{VOLVO_BUS1_SPEED, VOLVO_PT_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{VOLVO_VCU1, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_LCA_2, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SAS, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_PSCM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_DRIVER_INPUT, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_LCA_STEER, VOLVO_MAIN_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_BUS1_CRUISE_CONTROL, VOLVO_PT_BUS, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{VOLVO_VCU1_PSCM_CONTROL, VOLVO_MAIN_BUS, 8, 67U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_LCA_3, VOLVO_MAIN_BUS, 8, 67U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
   return BUILD_SAFETY_CFG(volvo_rx_checks, VOLVO_TX_MSGS);

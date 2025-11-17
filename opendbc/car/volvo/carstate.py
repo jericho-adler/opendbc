@@ -31,10 +31,10 @@ class CarState(CarStateBase):
     ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance
 
     # brake
-    #ret.brakePressed = bool(cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_A"] or cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_B"])
+    #ret.brakePressed = bool(cp_main.vl["LCA_2"]["BRAKE_PEDAL_PRESSED_A"] or cp_main.vl["LCA_2"]["BRAKE_PEDAL_PRESSED_B"])
     # BRAKE_PEDAL_PRESSED_A goes active when user starts pressing brake pedal, but no brake light is on yet due to tolerance
     # BRAKE_PEDAL_PRESSED_B goes active when when the brake pedal is pressed above minimum threshold, brake light is on
-    ret.brakePressed = cp_main.vl["VCU1"]["BRAKE_PEDAL_PRESSED_B"] == 1
+    ret.brakePressed = cp_main.vl["LCA_2"]["BRAKE_PEDAL_PRESSED_B"] == 1
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel
@@ -94,9 +94,9 @@ class CarState(CarStateBase):
     # Store entire message dictionaries
     self.msg_pscm = cp_party.vl['PSCM']
     self.msg_lca = cp_main.vl['LCA']
-    self.msg_vcu1 = cp_main.vl['VCU1']
-    self.msg_vcu1_pscm_control = cp_main.vl['VCU1_PSCM_CONTROL']
-    self.pilot_assist_engaged = cp_main.vl['VCU1']['PILOT_ASSIST_ENGAGED'] == 1
+    self.msg_lca_2 = cp_main.vl['LCA_2']
+    self.msg_lca_3 = cp_main.vl['LCA_3']
+    self.pilot_assist_engaged = cp_main.vl['LCA_2']['PILOT_ASSIST_ENGAGED'] == 1
 
     return ret
 

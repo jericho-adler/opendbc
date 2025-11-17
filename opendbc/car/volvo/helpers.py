@@ -1,4 +1,4 @@
-def checksum_vcu1_message(b1: int, b2: int, b5: int) -> int:
+def checksum_lca_2_message(b1: int, b2: int, b5: int) -> int:
   """
   Compute the 8-bit checksum from Byte1, Byte2 and Byte5.
 
