@@ -43,7 +43,10 @@ class CarController(CarControllerBase):
       can_sends.append(create_lca_steering(self.packer, CC.latActive, apply_torque, CS.msg_lca))
       self.apply_torque_last = apply_torque
 
-      can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, CS.pilot_assist_engaged))
+      # Check if PA hands-on-wheel spoof toggle is enabled (bit 1 of alternativeExperience)
+      spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 2)
+      spoof_pa_hands = CS.pilot_assist_engaged and spoof_pa_hands_enabled
+      can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
 
     # LCA_2 message at 50 Hz (send every other frame = 50 Hz)
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
