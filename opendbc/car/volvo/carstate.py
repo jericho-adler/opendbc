@@ -54,8 +54,8 @@ class CarState(CarStateBase):
     # cruise - double-tap detection (on-off-on within 500ms/50 frames / 1000ms/100 frames)
     cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1
 
-    # Check if double-tap cruise feature is enabled (bit 0 of alternativeExperience)
-    use_double_tap = bool(self.CP.alternativeExperience & 1)
+    # Check if double-tap cruise feature is enabled (bit 6 of alternativeExperience)
+    use_double_tap = bool(self.CP.alternativeExperience & 64)
 
     if use_double_tap:
       # Detect on-off-on double-tap pattern
