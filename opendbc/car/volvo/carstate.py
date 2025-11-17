@@ -14,6 +14,7 @@ class CarState(CarStateBase):
     self.cruise_enabled_prev = False
     self.cruise_last_disabled_frame = 0
     self.cruise_double_tap_active = False
+    self.gas_pressed_prev = False
     self.CC_frame = 0 # CarController frame
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
@@ -63,16 +64,19 @@ class CarState(CarStateBase):
         if self.CC_frame - self.cruise_last_disabled_frame <= 100:
           self.cruise_double_tap_active = True
       elif not cruise_raw and self.cruise_enabled_prev:
-        # Just turned OFF
+        # Just turned OFF - clear the double-tap flag
         self.cruise_last_disabled_frame = self.CC_frame
         self.cruise_double_tap_active = False
 
+      # The double_tap_active flag persists across gas press/release cycles
+      # This allows auto re-engagement when gas is released if cruise is still ON
       ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active
     else:
       # Single-tap engagement (immediate engagement when cruise is pressed)
       ret.cruiseState.enabled = cruise_raw
 
     self.cruise_enabled_prev = cruise_raw
+    self.gas_pressed_prev = ret.gasPressed
 
     #ret.cruiseState.enabled = cruise_raw and not ret.gasPressed # No more double-tap detection, uncomment if needed
     ret.cruiseState.available = True  # TODO: Determine actual availability
