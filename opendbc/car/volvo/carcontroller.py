@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -11,6 +11,8 @@ class CarController(CarControllerBase):
     super().__init__(dbc_names, CP)
     self.packer = CANPacker(dbc_names[Bus.party])
     self.apply_torque_last = 0
+
+    self.gear_acc = 0
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -48,21 +50,27 @@ class CarController(CarControllerBase):
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3))
-      #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
+      can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 
     # SPEED messages - 0x60, 0x67, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
-      #can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
-      #can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
-      #can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
+      can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
+      can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
       pass
 
     # LCA_2 - 0x69 - 50 Hz
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
     if self.frame % 2 == 0: # 50 Hz
-      #can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
+      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
       pass
+
+    # GEAR_POSITION - 0x80 - 40 Hz
+    self.gear_acc += 40
+    if self.gear_acc >= 100:
+        self.gear_acc -= 100
+        can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX

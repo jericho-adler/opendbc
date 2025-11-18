@@ -261,3 +261,16 @@ def create_0x1a_message(packer, msg_0x1a: dict):
     'ALL_BYTES': msg_0x1a['ALL_BYTES'],
   }
   return packer.make_can_msg('NEW_MSG_1A', 2, values)
+
+def create_gear_position_message(packer, msg_gear_position: dict):
+  """
+  Forward GEAR_POSITION message by copying all bytes.
+
+  Args:
+    packer: CAN packer instance
+    msg_gear_position: Dictionary containing GEAR_POSITION message values from car
+  """
+  values = {
+    'ALL_BYTES': msg_gear_position['ALL_BYTES'],
+  }
+  return packer.make_can_msg('GEAR_POSITION', 2, values)
