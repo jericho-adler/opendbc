@@ -50,8 +50,8 @@ class CarController(CarControllerBase):
 
     # LCA_2 message at 50 Hz (send every other frame = 50 Hz)
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
-    #if self.frame % 2 == 0:
-    if int(CS.msg_lca_2['COUNTER_1']) != int(self.lca_2_counter_1_prev): # PSCM is really strict on timing, send message as soon as the counter changes
+    if self.frame % 2 == 0:
+    #if int(CS.msg_lca_2['COUNTER_1']) != int(self.lca_2_counter_1_prev): # PSCM is really strict on timing, send message as soon as the counter changes
       can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
       self.lca_2_counter_1_prev = int(CS.msg_lca_2['COUNTER_1'])
       pass
