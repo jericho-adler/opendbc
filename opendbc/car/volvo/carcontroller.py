@@ -17,8 +17,10 @@ class CarController(CarControllerBase):
     self.lca_3_timer_2 = 0
     self.lca_3_timer_initialized = False
     self.lca_3_timer_1_prev = 0
+    self.lca_3_msg_prev = {}
 
     self.lca_2_counter_1_prev = 0
+    self.lca_2_msg_prev = {}
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -50,11 +52,13 @@ class CarController(CarControllerBase):
 
     # LCA_2 message at 50 Hz (send every other frame = 50 Hz)
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
-    if self.frame % 2 == 0:
+    #if self.frame % 2 == 0:
     #if int(CS.msg_lca_2['COUNTER_1']) != int(self.lca_2_counter_1_prev): # PSCM is really strict on timing, send message as soon as the counter changes
+    if self.lca_2_msg_prev != CS.msg_lca_2:
+      self.lca_2_msg_prev = CS.msg_lca_2
       can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
-      self.lca_2_counter_1_prev = int(CS.msg_lca_2['COUNTER_1'])
-      pass
+      #self.lca_2_counter_1_prev = int(CS.msg_lca_2['COUNTER_1'])
+      #pass
 
     # LCA_3 message at 67 Hz
     """
@@ -81,8 +85,10 @@ class CarController(CarControllerBase):
         self.lca_3_timer_2 = (self.lca_3_timer_2 + TIMER_INCREMENT) & 0xFFFF  # 16-bit wraparound
     """
     # 67 Hz - send message as soon as the timer changes
-    if int(CS.msg_lca_3['TIMER_1']) != int(self.lca_3_timer_1_prev):
-      self.lca_3_timer_1_prev = int(CS.msg_lca_3['TIMER_1'])
+    #if int(CS.msg_lca_3['TIMER_1']) != int(self.lca_3_timer_1_prev):
+    #  self.lca_3_timer_1_prev = int(CS.msg_lca_3['TIMER_1'])
+    if self.lca_3_msg_prev != CS.msg_lca_3:
+      self.lca_3_msg_prev = CS.msg_lca_3
       can_sends.append(create_lca_3_control(self.packer, CC.latActive, apply_torque, CS.msg_lca_3, 0, 0))
 
     new_actuators = actuators.as_builder()
