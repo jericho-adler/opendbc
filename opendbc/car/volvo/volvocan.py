@@ -94,8 +94,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, sp
 
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_lca_3_control(packer, lat_active: bool, apply_torque: int, msg_lca_3: dict,
-                            timer_1: int, timer_2: int):
+def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3: dict):
   """
   Create LCA_3 message for Volvo CMA platform.
   This message enables PSCM to accept LCA commands.
@@ -104,8 +103,6 @@ def create_lca_3_control(packer, lat_active: bool, apply_torque: int, msg_lca_3:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_lca_3: Dictionary containing LCA_3 message values
-    timer_1: 16-bit timer value (218 kHz, increments by ~3270 per message)
-    timer_2: 16-bit timer value (218 kHz, increments by ~3270 per message)
   """
   signal_9 = 128 if lat_active else msg_lca_3['NEW_SIGNAL_9']
   if lat_active:
@@ -120,8 +117,8 @@ def create_lca_3_control(packer, lat_active: bool, apply_torque: int, msg_lca_3:
     'NEW_SIGNAL_5': 30 if lat_active else msg_lca_3['NEW_SIGNAL_5'],
     'LCA_ACCEPT_COMMANDS_INV': 0 if lat_active else msg_lca_3['LCA_ACCEPT_COMMANDS_INV'],
     'NEW_SIGNAL_4': 3 if lat_active else msg_lca_3['NEW_SIGNAL_4'],
-    'TIMER_1': msg_lca_3['TIMER_1'], #timer_1,
-    'TIMER_2': msg_lca_3['TIMER_2'], #timer_2,
+    'SPEED_A': msg_lca_3['SPEED_A'],
+    'SPEED_B': msg_lca_3['SPEED_B'],
     'NEW_SIGNAL_8': 1 if lat_active else msg_lca_3['NEW_SIGNAL_8'],
     'COUNTER_1': msg_lca_3['COUNTER_1'],
     'NEW_SIGNAL_7': 3 if lat_active else msg_lca_3['NEW_SIGNAL_7'],
@@ -155,8 +152,8 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
     lat_active: Whether lateral control is active
     msg_lca_2: Dictionary containing LCA_2 message values from car
   """
-  if not lat_active:
-    return packer.make_can_msg('LCA_2', 2, msg_lca_2)
+  #if not lat_active:
+  #  return packer.make_can_msg('LCA_2', 2, msg_lca_2)
 
   values = {
     'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
@@ -208,3 +205,45 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
       print(f"b0={b0}, b1={b1}, calculated={values['CHECKSUM_2']}, expected={msg_lca_2['CHECKSUM_2']}")
       #assert False
   return packer.make_can_msg('LCA_2', 2, values)
+
+def create_speed_1_message(packer, msg_speed_1: dict):
+  """
+  Forward SPEED_1 message (0x67) by copying all bytes.
+
+  Args:
+    packer: CAN packer instance
+    msg_speed_1: Dictionary containing SPEED_1 message values from car
+  """
+  values = {
+    'ALL_BYTES': msg_speed_1['ALL_BYTES'],
+  }
+
+  return packer.make_can_msg('SPEED_1', 2, values)
+
+def create_speed_2_message(packer, msg_speed_2: dict):
+  """
+  Forward SPEED_2 message (0x68) by copying all bytes.
+
+  Args:
+    packer: CAN packer instance
+    msg_speed_2: Dictionary containing SPEED_2 message values from car
+  """
+  values = {
+    'ALL_BYTES': msg_speed_2['ALL_BYTES'],
+  }
+
+  return packer.make_can_msg('SPEED_2', 2, values)
+
+def create_speed_3_message(packer, msg_speed_3: dict):
+  """
+  Forward SPEED_3 message (0x60) by copying all bytes.
+
+  Args:
+    packer: CAN packer instance
+    msg_speed_3: Dictionary containing SPEED_3 message values from car
+  """
+  values = {
+    'ALL_BYTES': msg_speed_3['ALL_BYTES'],
+  }
+
+  return packer.make_can_msg('SPEED_3', 2, values)
