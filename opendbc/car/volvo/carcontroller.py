@@ -42,13 +42,6 @@ class CarController(CarControllerBase):
       # PSCM - 0x16 - 100 Hz
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
 
-    # SPEED messages - 0x60, 0x67, 0x68 - 50 Hz
-    # Forward speed messages to bus 2 before LCA_2
-    if self.frame % 2 == 0: # 50 Hz
-      can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
-      can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
-      can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
-
     # LCA_2 - 0x69 - 50 Hz
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
     if self.frame % 2 == 0: # 50 Hz
@@ -61,6 +54,13 @@ class CarController(CarControllerBase):
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3))
+
+    # SPEED messages - 0x60, 0x67, 0x68 - 50 Hz
+    if self.frame % 2 == 0: # 50 Hz
+      #can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
+      #can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
+      #can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      pass
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
