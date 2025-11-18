@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -42,24 +42,26 @@ class CarController(CarControllerBase):
       # PSCM - 0x16 - 100 Hz
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
 
-    # LCA_2 - 0x69 - 50 Hz
-    # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
-    if self.frame % 2 == 0: # 50 Hz
-      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
-      pass
-
     # LCA_3 - 0x57 - avg 66.66 Hz
     #if (self.frame * 67) % 100 < 67: # if (self.frame % 3) < 2:
     # 0x57 at ~66.67 Hz: send on 2 out of every 3 frames
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3))
+      can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
+      pass
 
     # SPEED messages - 0x60, 0x67, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
-      #can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
-      #can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
-      #can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
+      can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
+      can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      pass
+
+    # LCA_2 - 0x69 - 50 Hz
+    # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
+    if self.frame % 2 == 0: # 50 Hz
+      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
       pass
 
     new_actuators = actuators.as_builder()

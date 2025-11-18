@@ -111,6 +111,7 @@ class CarState(CarStateBase):
     self.msg_speed_1 = cp_main.vl['SPEED_1']
     self.msg_speed_2 = cp_main.vl['SPEED_2']
     self.msg_speed_3 = cp_main.vl['SPEED_3']
+    self.msg_0x1a = cp_main.vl['NEW_MSG_1A']
     self.pilot_assist_engaged = cp_main.vl['LCA_2']['PILOT_ASSIST_ENGAGED'] == 1
 
     return ret

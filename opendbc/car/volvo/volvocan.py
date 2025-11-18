@@ -152,7 +152,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
     lat_active: Whether lateral control is active
     msg_lca_2: Dictionary containing LCA_2 message values from car
   """
-  return packer.make_can_msg('LCA_2', 2, msg_lca_2)
+  #return packer.make_can_msg('LCA_2', 2, msg_lca_2)
   #if not lat_active:
   #  return packer.make_can_msg('LCA_2', 2, msg_lca_2)
 
@@ -248,3 +248,16 @@ def create_speed_3_message(packer, msg_speed_3: dict):
   }
 
   return packer.make_can_msg('SPEED_3', 2, values)
+
+def create_0x1a_message(packer, msg_0x1a: dict):
+  """
+  Forward 0x1A message by copying all bytes.
+
+  Args:
+    packer: CAN packer instance
+    msg_0x1a: Dictionary containing 0x1A message values from car
+  """
+  values = {
+    'ALL_BYTES': msg_0x1a['ALL_BYTES'],
+  }
+  return packer.make_can_msg('NEW_MSG_1A', 2, values)
