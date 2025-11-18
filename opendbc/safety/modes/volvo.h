@@ -146,7 +146,7 @@ static safety_config volvo_init(uint16_t param) {
     {VOLVO_LCA_STEER, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA steering command to party bus
     {VOLVO_PSCM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // PSCM message sent to main bus (relay from party bus)
     //{VOLVO_LCA_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_3 message sent to party bus
-    {VOLVO_LCA_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_2 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
+    //{VOLVO_LCA_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_2 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
   };
 
   // Define RX checks - include all messages present in route
