@@ -50,14 +50,14 @@ class CarController(CarControllerBase):
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3))
-      #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
+      can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 
     # SPEED messages - 0x60, 0x67, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
-      #can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
-      #can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
-      #can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
+      can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
+      can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
       pass
 
     # LCA_2 - 0x69 - 50 Hz
@@ -66,7 +66,7 @@ class CarController(CarControllerBase):
       can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
       pass
 
-    # GEAR_POSITION - 0x80 - 40 Hz - This message is critical for timing related to LCA_2 message (if timing incorrect, DTC is registered)
+    # GEAR_POSITION - 0x80 - 40 Hz
     self.gear_acc += 40 # Bresenham-style approach
     if self.gear_acc >= 100:
         self.gear_acc -= 100
