@@ -27,6 +27,7 @@ class CarState(CarStateBase):
     self.msg_speed_2 = {}
     self.msg_speed_3 = {}
     self.msg_0x1a = {}
+    self.msg_egsm = {}
     self.msg_lca_2_counter_1 = -1
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
@@ -128,8 +129,9 @@ class CarState(CarStateBase):
     self.msg_speed_3 = cp_main.vl['SPEED_3']
     self.msg_0x1a = cp_main.vl['NEW_MSG_1A']
     self.msg_gear_position = cp_main.vl['GEAR_POSITION']
-    self.pilot_assist_engaged = cp_main.vl['LCA_2']['PILOT_ASSIST_ENGAGED'] == 1
+    self.msg_egsm = cp_party.vl['EGSM']
 
+    self.pilot_assist_engaged = cp_main.vl['LCA_2']['PILOT_ASSIST_ENGAGED'] == 1
     return ret
 
   @staticmethod

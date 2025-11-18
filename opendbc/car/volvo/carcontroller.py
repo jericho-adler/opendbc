@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -43,6 +43,8 @@ class CarController(CarControllerBase):
       spoof_pa_hands = CS.pilot_assist_engaged and spoof_pa_hands_enabled
       # PSCM - 0x16 - 100 Hz
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
+      # EGSM - 0x45 - 100 Hz
+      can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 
     # LCA_3 - 0x57 - avg 66.66 Hz
     #if (self.frame * 67) % 100 < 67: # if (self.frame % 3) < 2:

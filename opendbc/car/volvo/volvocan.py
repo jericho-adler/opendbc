@@ -274,3 +274,16 @@ def create_gear_position_message(packer, msg_gear_position: dict):
     'ALL_BYTES': msg_gear_position['ALL_BYTES'],
   }
   return packer.make_can_msg('GEAR_POSITION', 2, values)
+
+def create_egsm_message(packer, msg_egsm: dict):
+  """
+  Forward EGSM message by copying all bytes.
+
+  Args:
+    packer: CAN packer instance
+    msg_egsm: Dictionary containing EGSM message values from car
+  """
+  values = {
+    'ALL_BYTES': msg_egsm['ALL_BYTES'],
+  }
+  return packer.make_can_msg('EGSM', 0, values)

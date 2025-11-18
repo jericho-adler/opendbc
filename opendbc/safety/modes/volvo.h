@@ -17,6 +17,7 @@
 #define VOLVO_SPEED_2             0x68U   // RX
 #define VOLVO_SPEED_3             0x60U   // RX
 #define VOLVO_0x1a                0x1aU   // RX
+#define VOLVO_EGSM                0x45U   // RX from EGSM
 
 
 // CAN bus definitions for Volvo CMA platform
@@ -157,6 +158,7 @@ static safety_config volvo_init(uint16_t param) {
     //{VOLVO_SPEED_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_3 message sent to main bus
     //{VOLVO_0x1a, VOLVO_PARTY_BUS, 8, .check_relay = true},  // 0x1a message sent to main bus
     {VOLVO_GEAR_POSITION, VOLVO_PARTY_BUS, 8, .check_relay = true},  // GEAR_POSITION message sent to main bus
+    {VOLVO_EGSM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // EGSM message sent to party bus
   };
 
   // Define RX checks - include all messages present in route
@@ -174,6 +176,7 @@ static safety_config volvo_init(uint16_t param) {
     {.msg = {{VOLVO_SPEED_1, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SPEED_2, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SPEED_3, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_EGSM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
   return BUILD_SAFETY_CFG(volvo_rx_checks, VOLVO_TX_MSGS);
