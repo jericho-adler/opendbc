@@ -67,7 +67,7 @@ class CarController(CarControllerBase):
       pass
 
     # GEAR_POSITION - 0x80 - 40 Hz
-    self.gear_acc += 40
+    self.gear_acc += 40 # Bresenham-style approach
     if self.gear_acc >= 100:
         self.gear_acc -= 100
         can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
