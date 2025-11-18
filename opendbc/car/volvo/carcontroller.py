@@ -12,7 +12,7 @@ class CarController(CarControllerBase):
     self.packer = CANPacker(dbc_names[Bus.party])
     self.apply_torque_last = 0
 
-    self.gear_acc = 100
+    self.gear_acc = 60
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
