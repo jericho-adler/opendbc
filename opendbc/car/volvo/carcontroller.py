@@ -60,10 +60,8 @@ class CarController(CarControllerBase):
 
     # LCA_2 - 0x69 - 50 Hz
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
-    #if self.frame % 2 == 0: # 50 Hz
-    if CS.dispatch_lca_2_msg:
-      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
-      CS.dispatch_lca_2_msg = False
+    if self.frame % 2 == 0: # 50 Hz
+      #can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
       pass
 
     new_actuators = actuators.as_builder()

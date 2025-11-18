@@ -116,9 +116,10 @@ class CarState(CarStateBase):
     # Store entire message dictionaries
     self.msg_pscm = cp_party.vl['PSCM']
     self.msg_lca = cp_main.vl['LCA']
-    if cp_main.vl['LCA_2'] != self.msg_lca_2:
-      self.msg_lca_2 = cp_main.vl['LCA_2']
-      self.dispatch_lca_2_msg = True
+    #if cp_main.vl['LCA_2'] != self.msg_lca_2:
+    #  self.msg_lca_2 = cp_main.vl['LCA_2']
+    #  self.dispatch_lca_2_msg = True
+    self.msg_lca_2 = cp_main.vl['LCA_2']
     self.msg_lca_3 = cp_main.vl['LCA_3']
     # self.msg_speed_1 = cp_main.vl['SPEED_1']
     # self.msg_speed_2 = cp_main.vl['SPEED_2']
