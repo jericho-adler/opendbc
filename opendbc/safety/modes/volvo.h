@@ -158,7 +158,7 @@ static safety_config volvo_init(uint16_t param) {
     //{VOLVO_SPEED_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_3 message sent to main bus
     //{VOLVO_0x1a, VOLVO_PARTY_BUS, 8, .check_relay = true},  // 0x1a message sent to main bus
     {VOLVO_GEAR_POSITION, VOLVO_PARTY_BUS, 8, .check_relay = true},  // GEAR_POSITION message sent to main bus
-    {VOLVO_EGSM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // EGSM message sent to party bus
+    //{VOLVO_EGSM, VOLVO_MAIN_BUS, 8, .check_relay = true},  // EGSM message sent to party bus
   };
 
   // Define RX checks - include all messages present in route
