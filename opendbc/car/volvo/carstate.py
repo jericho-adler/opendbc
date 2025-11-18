@@ -17,6 +17,15 @@ class CarState(CarStateBase):
     self.gas_pressed_prev = False
     self.CC_frame = 0 # CarController frame
     self.dispatch_lca_2_msg = False
+    self.msg_pscm = {}
+    self.msg_lca = {}
+    self.msg_lca_2 = {}
+    self.msg_lca_3 = {}
+    self.pilot_assist_engaged = False
+    # self.msg_speed_1 = {}
+    # self.msg_speed_2 = {}
+    # self.msg_speed_3 = {}
+    # self.msg_0x1a = {}
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
