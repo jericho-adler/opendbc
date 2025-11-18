@@ -12,12 +12,6 @@ class CarController(CarControllerBase):
     self.packer = CANPacker(dbc_names[Bus.party])
     self.apply_torque_last = 0
 
-    # LCA_3 timer state (218 kHz timers)
-    self.lca_3_timer_1 = 0
-    self.lca_3_timer_2 = 0
-    self.lca_3_timer_1_initialized = False
-    self.lca_3_timer_2_initialized = False
-
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
     can_sends = []
@@ -59,7 +53,6 @@ class CarController(CarControllerBase):
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
     if self.frame % 2 == 0: # 50 Hz
       can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
-      #self.lca_2_counter_1_prev = int(CS.msg_lca_2['COUNTER_1'])
       pass
 
     # LCA_3 - 0x57 - avg 66.66 Hz
