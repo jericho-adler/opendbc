@@ -81,7 +81,8 @@ class CarController(CarControllerBase):
         self.lca_3_timer_2 = (self.lca_3_timer_2 + TIMER_INCREMENT) & 0xFFFF  # 16-bit wraparound
     """
     # 67 Hz - send message as soon as the timer changes
-    if int(CS.msg_lca_3['TIMER_1']) != int(self.lca_3_timer_1_prev):
+    #if int(CS.msg_lca_3['TIMER_1']) != int(self.lca_3_timer_1_prev):
+    if (self.frame * 67) % 100 < 67:
       self.lca_3_timer_1_prev = int(CS.msg_lca_3['TIMER_1'])
       can_sends.append(create_lca_3_control(self.packer, CC.latActive, apply_torque, CS.msg_lca_3, 0, 0))
 
