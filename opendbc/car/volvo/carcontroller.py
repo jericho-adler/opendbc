@@ -46,8 +46,9 @@ class CarController(CarControllerBase):
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
-      # PSCM_RELATED - 0x17 - 100 Hz
-      can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged, CS.msg_pscm_related))
+
+      # PSCM_RELATED - 0x17 - 100 Hz # TODO Uncomment
+      #can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged, CS.msg_pscm_related))
 
     # LCA_3 - 0x57 - avg 66.66 Hz
     #if (self.frame * 67) % 100 < 67: # if (self.frame % 3) < 2:
