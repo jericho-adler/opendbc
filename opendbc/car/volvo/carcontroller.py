@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -45,6 +45,8 @@ class CarController(CarControllerBase):
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
+      # PSCM_RELATED - 0x17 - 100 Hz
+      can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged, CS.msg_pscm_related))
 
     # LCA_3 - 0x57 - avg 66.66 Hz
     #if (self.frame * 67) % 100 < 67: # if (self.frame % 3) < 2:
@@ -72,7 +74,7 @@ class CarController(CarControllerBase):
     #self.gear_acc += 40 # Bresenham-style approach
     #if self.gear_acc >= 100:
     #    self.gear_acc -= 100
-    if self.frame % 5 == 0 or self.frame % 5 == 2:  # 2/5 * 100 Hz = 40 Hz
+    if self.frame % 5 == 0 or self.frame % 5 == 2:  # 2/5 * 100 Hz = 40 Hz # openpilot forward delay causes DTC in EGSM, but fixes DTC in PSCM
       can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
 
     new_actuators = actuators.as_builder()

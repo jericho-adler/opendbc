@@ -28,7 +28,7 @@ class CarState(CarStateBase):
     self.msg_speed_3 = {}
     self.msg_0x1a = {}
     self.msg_egsm = {}
-    self.msg_lca_2_counter_1 = -1
+    self.msg_pscm_related = {}
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -119,9 +119,6 @@ class CarState(CarStateBase):
     # Store entire message dictionaries
     self.msg_pscm = cp_party.vl['PSCM']
     self.msg_lca = cp_main.vl['LCA']
-    #if cp_main.vl['LCA_2'] != self.msg_lca_2:
-    #  self.msg_lca_2 = cp_main.vl['LCA_2']
-    #  self.dispatch_lca_2_msg = True
     self.msg_lca_2 = cp_main.vl['LCA_2']
     self.msg_lca_3 = cp_main.vl['LCA_3']
     self.msg_speed_1 = cp_main.vl['SPEED_1']
@@ -130,6 +127,7 @@ class CarState(CarStateBase):
     self.msg_0x1a = cp_main.vl['NEW_MSG_1A']
     self.msg_gear_position = cp_main.vl['GEAR_POSITION']
     self.msg_egsm = cp_party.vl['EGSM']
+    self.msg_pscm_related = cp_party.vl['PSCM_RELATED']
 
     self.pilot_assist_engaged = cp_main.vl['LCA_2']['PILOT_ASSIST_ENGAGED'] == 1
     return ret

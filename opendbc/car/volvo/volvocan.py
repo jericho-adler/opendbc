@@ -1,5 +1,5 @@
 import random
-from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message
+from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message
 from opendbc.car.carlog import carlog
 
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
@@ -287,3 +287,34 @@ def create_egsm_message(packer, msg_egsm: dict):
     'ALL_BYTES': msg_egsm['ALL_BYTES'],
   }
   return packer.make_can_msg('EGSM', 0, values)
+
+def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: bool, msg_pscm_related: dict):
+  # BO_ 23 PSCM_RELATED: 8 XXX
+  # SG_ CHECKSUM : 7|8@0+ (1,0) [0|255] "" XXX
+  # SG_ LCA_ENABLED_ECHO : 11|4@0+ (1,0) [0|15] "" XXX
+  # SG_ SIG1_BYTE_1_HI_NIBBLE : 15|4@0+ (1,0) [0|15] "" XXX
+  # SG_ SIG1_REPLICA_BYTE_2_LO_NIBLE : 19|4@0+ (1,0) [0|15] "" XXX
+  # SG_ NEW_SIGNAL_2 : 23|4@0+ (1,0) [0|15] "" XXX
+  # SG_ BYTE_3 : 31|8@0+ (1,0) [0|255] "" XXX
+  # SG_ BYTE_4 : 39|8@0+ (1,0) [0|255] "" XXX
+  # SG_ BYTE_5 : 47|8@0+ (1,0) [0|255] "" XXX
+  # SG_ BYTE_6 : 55|8@0+ (1,0) [0|255] "" XXX
+  # SG_ BYTE_7 : 63|8@0+ (1,0) [0|255] "" XXX
+  values = dict(msg_pscm_related)
+  b0 = int(values['CHECKSUM_1'])
+  b1 = int(values['SIG1_BYTE_1_HI_NIBBLE']) << 4 | int(values['LCA_ENABLED_ECHO'])
+  b2 = int(values['NEW_SIGNAL_2']) << 4 | int(values['SIG1_REPLICA_BYTE_2_LO_NIBLE'])
+  b3 = int(values['CHECKSUM_2'])
+  b4 = int(values['BYTE_4'])
+  b5 = int(values['BYTE_5'])
+  b6 = int(values['BYTE_6'])
+  b7 = int(values['BYTE_7'])
+  values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
+  values['CHECKSUM_2'] = checksum_2_pscm_related_message(b2)
+  #assert values['CHECKSUM_1'] == msg_pscm_related['CHECKSUM_1']
+  #assert values['CHECKSUM_2'] == msg_pscm_related['CHECKSUM_2']
+  if lat_active and not stock_lca_engaged:
+    values['LCA_ENABLED_ECHO'] = 0
+    b1 = int(values['SIG1_BYTE_1_HI_NIBBLE']) << 4 | int(values['LCA_ENABLED_ECHO'])
+    values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
+  return packer.make_can_msg('PSCM_RELATED', 0, values)
