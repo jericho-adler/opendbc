@@ -160,12 +160,12 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
 
   values = {
     'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
-    'COUNTER_1': counter_1, # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
+    'COUNTER_1': msg_lca_2['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
     'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_lca_2['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
     'BYTE_1_MSBS_3': msg_lca_2['BYTE_1_MSBS_3'], # Byte 1 [0:3]
     'CHECKSUM_2': msg_lca_2['CHECKSUM_2'], # Checksum on bytes 0 and 1
     'NEW_SIGNAL_2': 0 if lat_active else msg_lca_2['NEW_SIGNAL_2'],
-    'COUNTER_2': counter_2, # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
+    'COUNTER_2': msg_lca_2['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
     'NEW_SIGNAL_3': 3 if lat_active else msg_lca_2['NEW_SIGNAL_3'],
     'BRAKE_PEDAL_PRESSED_B': msg_lca_2['BRAKE_PEDAL_PRESSED_B'],
     'BRAKE_PEDAL_PRESSED_A': msg_lca_2['BRAKE_PEDAL_PRESSED_A'],
@@ -173,20 +173,28 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
     'BYTE_7': 0 if lat_active else msg_lca_2['BYTE_7'],
   }
 
-  # Reconstruct bytes 1, 2, and 5 from signal values for checksum calculation
-  b1 = ((int(values['COUNTER_1']) & 0x0F) |
-        ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
-        ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
-  b2 = int(values['CHECKSUM_2']) & 0xFF
-  # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
-  # raw = (physical - offset) / scale = (physical - 1) / -1
-  brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
-  b5 = ((int(values['COUNTER_2']) & 0x0F) |
-        ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
-        ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
-        ((brake_pedal_a_raw & 0x01) << 7))
+  def build_bytes(values: dict) -> list[int]:
+    b0 = int(values['BYTE_0']) # Used for checksum 1 and 2
+    b1 = ((int(values['COUNTER_1']) & 0x0F) |
+          ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
+          ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
+    b2 = int(values['CHECKSUM_2']) & 0xFF
+    # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
+    # raw = (physical - offset) / scale = (physical - 1) / -1
+    brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
+    b5 = ((int(values['COUNTER_2']) & 0x0F) |
+          ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
+          ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
+          ((brake_pedal_a_raw & 0x01) << 7))
+    b3 = None
+    b4 = None
+    return [b0, b1, b2, b3, b4, b5]
 
-  b0 = int(values['BYTE_0']) # Used for checksum 1 and 2
+  built_bytes = build_bytes(values)
+  b0 = built_bytes[0]
+  b1 = built_bytes[1]
+  b2 = built_bytes[2]
+  b5 = built_bytes[5]
 
   values['CHECKSUM'] = checksum_lca_2_message(b0, b5)
 
@@ -199,7 +207,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
       #assert False
 
   # Checksum 2
-  b1 = (int(values['BYTE_1_MSBS_3']) & 0b111) << 5 | (int(values['PILOT_ASSIST_ENGAGED']) & 0b1) << 4 | (int(values['COUNTER_1']) & 0b1111)
+  #b1 = (int(values['BYTE_1_MSBS_3']) & 0b111) << 5 | (int(values['PILOT_ASSIST_ENGAGED']) & 0b1) << 4 | (int(values['COUNTER_1']) & 0b1111)
   checksum_2 = checksum_2_0x69_message(b0, b1)
   values['CHECKSUM_2'] = checksum_2
   if not lat_active:
@@ -207,6 +215,15 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
       carlog.warning("[volvocan.py] LCA_2 CHECKSUM_2 mismatch")
       print(f"b0={b0}, b1={b1}, calculated={values['CHECKSUM_2']}, expected={msg_lca_2['CHECKSUM_2']}")
       #assert False
+  values['COUNTER_1'] = counter_1
+  values['COUNTER_2'] = counter_2
+  built_bytes = build_bytes(values)
+  b0 = built_bytes[0]
+  b1 = built_bytes[1]
+  b2 = built_bytes[2]
+  b5 = built_bytes[5]
+  values['CHECKSUM'] = checksum_lca_2_message(b0, b5)
+  values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
 def create_speed_1_message(packer, msg_speed_1: dict):

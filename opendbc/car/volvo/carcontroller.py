@@ -99,7 +99,8 @@ class CarController(CarControllerBase):
     #if self.gear_acc >= 100:
     #    self.gear_acc -= 100
     if self.frame % 5 == 0 or self.frame % 5 == 2:  # 2/5 * 100 Hz = 40 Hz # openpilot forward delay causes DTC in EGSM, but fixes DTC in PSCM
-      can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
+      #can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
+      pass
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
