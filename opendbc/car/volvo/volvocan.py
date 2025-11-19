@@ -307,7 +307,7 @@ def create_egsm_message(packer, msg_egsm: dict):
   }
   return packer.make_can_msg('EGSM', 0, values)
 
-def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: bool, msg_pscm_related: dict):
+def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: bool, msg_pscm_related: dict, sig1_counter: int):
   # BO_ 23 PSCM_RELATED: 8 XXX
   # SG_ CHECKSUM : 7|8@0+ (1,0) [0|255] "" XXX
   # SG_ LCA_ENABLED_ECHO : 11|4@0+ (1,0) [0|15] "" XXX
@@ -320,6 +320,11 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
   # SG_ BYTE_6 : 55|8@0+ (1,0) [0|255] "" XXX
   # SG_ BYTE_7 : 63|8@0+ (1,0) [0|255] "" XXX
   values = dict(msg_pscm_related)
+
+  # Update SIG1 counter (same value in both locations for redundancy)
+  values['SIG1_BYTE_1_HI_NIBBLE'] = sig1_counter
+  values['SIG1_REPLICA_BYTE_2_LO_NIBLE'] = sig1_counter
+
   b0 = int(values['CHECKSUM_1'])
   b1 = int(values['SIG1_BYTE_1_HI_NIBBLE']) << 4 | int(values['LCA_ENABLED_ECHO'])
   b2 = int(values['NEW_SIGNAL_2']) << 4 | int(values['SIG1_REPLICA_BYTE_2_LO_NIBLE'])

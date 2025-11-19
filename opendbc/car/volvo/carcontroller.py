@@ -19,6 +19,9 @@ class CarController(CarControllerBase):
     self.lca_2_counter_1 = None  # Will grab initial value from CarState
     self.lca_2_counter_2 = None
 
+    # Counter management for PSCM_RELATED
+    self.pscm_related_counter = None  # Will grab initial value from CarState
+
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
     can_sends = []
@@ -51,8 +54,16 @@ class CarController(CarControllerBase):
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 
-      # PSCM_RELATED (bus 2 -> 0) - 0x17 - 100 Hz # TODO Uncomment
-      #can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged, CS.msg_pscm_related))
+      # PSCM_RELATED (bus 2 -> 0) - 0x17 - 100 Hz
+      # Initialize counter from CarState on first run
+      if self.pscm_related_counter is None:
+        self.pscm_related_counter = CS.msg_pscm_related['SIG1_BYTE_1_HI_NIBBLE']
+
+      # Increment counter by +1, wrap from 14 → 0 (modulo 15)
+      self.pscm_related_counter = (self.pscm_related_counter + 1) % 15
+
+      can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged,
+                                                     CS.msg_pscm_related, self.pscm_related_counter))
 
     # LCA_3 - 0x57 - avg 66.66 Hz
     #if (self.frame * 67) % 100 < 67: # if (self.frame % 3) < 2:
