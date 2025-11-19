@@ -15,6 +15,10 @@ class CarController(CarControllerBase):
     self.gear_acc = 60
     self.lca_4_acc = 0  # Bresenham accumulator for 29 Hz
 
+    # Counter management for LCA_2
+    self.lca_2_counter_1 = None  # Will grab initial value from CarState
+    self.lca_2_counter_2 = None
+
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
     can_sends = []
@@ -42,12 +46,12 @@ class CarController(CarControllerBase):
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
       spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 128)
       spoof_pa_hands = CS.pilot_assist_engaged and spoof_pa_hands_enabled
-      # PSCM (bus 2) - 0x16 - 100 Hz
+      # PSCM (bus 2 -> 0) - 0x16 - 100 Hz
       can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 
-      # PSCM_RELATED (bus 2) - 0x17 - 100 Hz # TODO Uncomment
+      # PSCM_RELATED (bus 2 -> 0) - 0x17 - 100 Hz # TODO Uncomment
       #can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged, CS.msg_pscm_related))
 
     # LCA_3 - 0x57 - avg 66.66 Hz
@@ -69,7 +73,17 @@ class CarController(CarControllerBase):
     # LCA_2 - 0x69 - 50 Hz
     # Spoof PILOT_ASSIST_ENGAGED to keep PSCM accepting LCA commands
     if self.frame % 2 == 0: # 50 Hz
-      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
+      # Initialize counters from CarState on first run
+      if self.lca_2_counter_1 is None:
+        self.lca_2_counter_1 = CS.msg_lca_2['COUNTER_1']
+        self.lca_2_counter_2 = CS.msg_lca_2['COUNTER_2']
+
+      # Increment counters (COUNTER_1 by +2, COUNTER_2 by +4, both modulo 16)
+      self.lca_2_counter_1 = (self.lca_2_counter_1 + 2) % 16
+      self.lca_2_counter_2 = (self.lca_2_counter_2 + 4) % 16
+
+      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2,
+                                            self.lca_2_counter_1, self.lca_2_counter_2))
       pass
 
     # LCA_4 - 0x90 - 29 Hz

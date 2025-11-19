@@ -140,7 +140,7 @@ def diff_dicts(a, b):
     "changed": changed,
   }
 
-def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
+def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: int, counter_2: int):
   """
   Create LCA_2 message to spoof PILOT_ASSIST_ENGAGED when openpilot is active.
 
@@ -151,6 +151,8 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_lca_2: Dictionary containing LCA_2 message values from car
+    counter_1: Managed COUNTER_1 value (increments by +2 mod 16)
+    counter_2: Managed COUNTER_2 value (increments by +4 mod 16)
   """
   #return packer.make_can_msg('LCA_2', 2, msg_lca_2)
   #if not lat_active:
@@ -158,12 +160,12 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict):
 
   values = {
     'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
-    'COUNTER_1': msg_lca_2['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
+    'COUNTER_1': counter_1, # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
     'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_lca_2['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
     'BYTE_1_MSBS_3': msg_lca_2['BYTE_1_MSBS_3'], # Byte 1 [0:3]
     'CHECKSUM_2': msg_lca_2['CHECKSUM_2'], # Checksum on bytes 0 and 1
     'NEW_SIGNAL_2': 0 if lat_active else msg_lca_2['NEW_SIGNAL_2'],
-    'COUNTER_2': msg_lca_2['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
+    'COUNTER_2': counter_2, # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
     'NEW_SIGNAL_3': 3 if lat_active else msg_lca_2['NEW_SIGNAL_3'],
     'BRAKE_PEDAL_PRESSED_B': msg_lca_2['BRAKE_PEDAL_PRESSED_B'],
     'BRAKE_PEDAL_PRESSED_A': msg_lca_2['BRAKE_PEDAL_PRESSED_A'],
