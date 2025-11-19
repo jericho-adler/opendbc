@@ -196,7 +196,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   b2 = built_bytes[2]
   b5 = built_bytes[5]
 
-  values['CHECKSUM'] = checksum_lca_2_message(b0, b5)
+  values['CHECKSUM_1'] = checksum_lca_2_message(b0, b5)
 
   # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
   if not lat_active:
