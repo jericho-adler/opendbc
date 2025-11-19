@@ -169,7 +169,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
     'NEW_SIGNAL_3': 3 if lat_active else msg_lca_2['NEW_SIGNAL_3'],
     'BRAKE_PEDAL_PRESSED_B': msg_lca_2['BRAKE_PEDAL_PRESSED_B'],
     'BRAKE_PEDAL_PRESSED_A': msg_lca_2['BRAKE_PEDAL_PRESSED_A'],
-    'CHECKSUM': msg_lca_2['CHECKSUM'], # Byte 6 is a checksum based on Bytes 1, 2, and 5 only
+    'CHECKSUM_1': msg_lca_2['CHECKSUM_1'], # Byte 6 is a checksum based on Bytes 1, 2, and 5 only
     'BYTE_7': 0 if lat_active else msg_lca_2['BYTE_7'],
   }
 
@@ -200,10 +200,10 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
 
   # Only validate when not active and message is valid (BYTE_0 should be 24, not 0)
   if not lat_active:
-    #assert values['CHECKSUM'] == msg_lca_2['CHECKSUM']
-    if values['CHECKSUM'] != msg_lca_2['CHECKSUM']:
+    #assert values['CHECKSUM_1'] == msg_lca_2['CHECKSUM_1']
+    if values['CHECKSUM_1'] != msg_lca_2['CHECKSUM_1']:
       carlog.warning("[volvocan.py] LCA_2 CHECKSUM mismatch")
-      print(f"b0={b0}, b1={b1}, b2={b2}, b5={b5}, calculated={values['CHECKSUM']}, expected={msg_lca_2['CHECKSUM']}")
+      print(f"b0={b0}, b1={b1}, b2={b2}, b5={b5}, calculated={values['CHECKSUM_1']}, expected={msg_lca_2['CHECKSUM_1']}")
       #assert False
 
   # Checksum 2
@@ -222,7 +222,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   b1 = built_bytes[1]
   b2 = built_bytes[2]
   b5 = built_bytes[5]
-  values['CHECKSUM'] = checksum_lca_2_message(b0, b5)
+  values['CHECKSUM_1'] = checksum_lca_2_message(b0, b5)
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
