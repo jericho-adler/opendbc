@@ -29,6 +29,7 @@ class CarState(CarStateBase):
     self.msg_0x1a = {}
     self.msg_egsm = {}
     self.msg_pscm_related = {}
+    self.msg_lca_4 = {}
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -121,6 +122,7 @@ class CarState(CarStateBase):
     self.msg_lca = cp_main.vl['LCA']
     self.msg_lca_2 = cp_main.vl['LCA_2']
     self.msg_lca_3 = cp_main.vl['LCA_3']
+    self.msg_lca_4 = cp_main.vl['LCA_4']
     self.msg_speed_1 = cp_main.vl['SPEED_1']
     self.msg_speed_2 = cp_main.vl['SPEED_2']
     self.msg_speed_3 = cp_main.vl['SPEED_3']

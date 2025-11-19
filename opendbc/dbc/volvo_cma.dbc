@@ -141,6 +141,33 @@ BO_ 128 GEAR_POSITION: 8 XXX
  SG_ ALL_BYTES : 0|64@1+ (1,0) [0|1.84467440737096e+19] "" XXX
  SG_ GEAR_POSITION : 57|2@0+ (1,0) [0|3] "" XXX
 
+BO_ 144 LCA_4: 8 XXX
+ SG_ BYTE_1 : 7|8@0+ (1,0) [0|16383] "" XXX
+ SG_ LCA_ENABLE : 9|2@0+ (1,0) [0|3] "" XXX
+ SG_ BYTE_1_FLAGS : 11|2@0+ (1,0) [0|3] "" XXX
+ SG_ BYTE_1_NIBBLE_HI : 15|4@0+ (1,0) [0|63] "" XXX
+ SG_ BYTE_2 : 23|8@0+ (1,0) [0|255] "" XXX
+ SG_ BYTE_3 : 31|8@0+ (1,0) [0|255] "" XXX
+ SG_ BYTE_4 : 39|8@0+ (1,0) [0|255] "" XXX
+ SG_ BYTE_5 : 40|8@1+ (1,0) [0|255] "" XXX
+ SG_ BYTE_6 : 48|8@1+ (1,0) [0|255] "" XXX
+ SG_ BYTE_7_NIBBLE_LO : 59|4@0+ (1,0) [0|15] "" XXX
+ SG_ BYTE_7_NIBBLE_HI : 60|4@1+ (1,0) [0|15] "" XXX
+
+BO_ 151 LCA_SUSPECT: 8 XXX
+ SG_ NEW_SIGNAL_1 : 7|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_2 : 8|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_3 : 23|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_6 : 25|2@0+ (1,0) [0|3] "" XXX
+ SG_ NEW_SIGNAL_5 : 26|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_4 : 27|5@1+ (1,0) [0|31] "" XXX
+ SG_ NEW_SIGNAL_7 : 39|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_9 : 43|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_8 : 44|4@1+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_10 : 48|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_12 : 56|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_11 : 63|7@0+ (1,0) [0|127] "" XXX
+
 BO_ 336 NEW_MSG_150: 8 XXX
  SG_ IGN_DRAFT : 5|2@0+ (1,0) [0|3] "" XXX
 

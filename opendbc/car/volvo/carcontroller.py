@@ -2,7 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -13,6 +13,7 @@ class CarController(CarControllerBase):
     self.apply_torque_last = 0
 
     self.gear_acc = 60
+    self.lca_4_acc = 0  # Bresenham accumulator for 29 Hz
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -69,6 +70,14 @@ class CarController(CarControllerBase):
     if self.frame % 2 == 0: # 50 Hz
       can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2))
       pass
+
+    # LCA_4 - 0x90 - 29 Hz
+    # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active
+    # Using Bresenham-style accumulator for precise 29 Hz
+    self.lca_4_acc += 29
+    if self.lca_4_acc >= 100:
+      self.lca_4_acc -= 100
+      can_sends.append(create_lca_4_message(self.packer, CC.latActive, CS.msg_lca_4))
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach

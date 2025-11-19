@@ -1,5 +1,5 @@
 import random
-from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message
+from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message
 from opendbc.car.carlog import carlog
 
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
@@ -318,3 +318,55 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
     b1 = int(values['SIG1_BYTE_1_HI_NIBBLE']) << 4 | int(values['LCA_ENABLED_ECHO'])
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
+
+def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict):
+  """
+  Create LCA_4 (0x90) message to maintain Pilot Assist state when openpilot is active.
+
+  Critical: LCA_ENABLE (byte 1 bits 0-1) must be held at 3 (both bits=1) when lat_active.
+  When PA turns off, these bits start varying (become counters). We need to keep them
+  stable at 3 to fool PSCM into thinking PA is still on, allowing LCA commands to be accepted.
+
+  Based on analysis from route_analysis/pilot_assist_off/BASELINE_FILTERED_FINDINGS.md:
+  - Message 0x090 byte 1 bits 0-1 are PA state signals
+  - During PA ON: bits are stable at 3 (binary 11)
+  - During PA OFF: bits start varying (counters)
+  - PSCM uses this to determine whether to accept LCA steering commands
+
+  Args:
+    packer: CAN packer instance
+    lat_active: Whether lateral control is active
+    msg_lca_4: Dictionary containing LCA_4 message values from car
+
+  Returns:
+    CAN message for LCA_4 on bus 2
+  """
+  if not lat_active:
+    # When not active, just relay stock message unchanged
+    return packer.make_can_msg('LCA_4', 2, msg_lca_4)
+
+  # When lat_active, force LCA_ENABLE to 3 (PA ON state)
+  values = {
+    'BYTE_1': msg_lca_4['BYTE_1'],
+    'LCA_ENABLE': 3,  # Force bits 0-1 to 1 (value=3 means both bits set)
+    'BYTE_1_FLAGS': msg_lca_4['BYTE_1_FLAGS'],
+    'BYTE_1_NIBBLE_HI': msg_lca_4['BYTE_1_NIBBLE_HI'],
+    'BYTE_2': msg_lca_4['BYTE_2'],
+    'BYTE_3': msg_lca_4['BYTE_3'],
+    'BYTE_4': msg_lca_4['BYTE_4'],
+    'BYTE_5': msg_lca_4['BYTE_5'],
+    'BYTE_6': msg_lca_4['BYTE_6'],
+    'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
+    'BYTE_7_NIBBLE_HI': msg_lca_4['BYTE_7_NIBBLE_HI'],
+  }
+
+  # TODO: Add checksum calculation when checksum function is implemented
+  # If message has a checksum signal, it would be calculated here like:
+  # values['CHECKSUM'] = checksum_lca_4_message(...)
+
+  # TODO: Add checksum validation when not active (once checksum is known)
+  # if not lat_active and 'CHECKSUM' in msg_lca_4:
+  #   if values['CHECKSUM'] != msg_lca_4['CHECKSUM']:
+  #     carlog.warning("[volvocan.py] LCA_4 CHECKSUM mismatch")
+
+  return packer.make_can_msg('LCA_4', 2, values)
