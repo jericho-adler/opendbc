@@ -2,6 +2,7 @@ from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
+from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
@@ -21,6 +22,9 @@ class CarController(CarControllerBase):
 
     # Counter management for PSCM_RELATED
     self.pscm_related_counter = None  # Will grab initial value from CarState
+
+    # Counter management for LCA_3 (pattern-based)
+    self.lca_3_counter_sync = LCA3CounterSync()
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -70,7 +74,9 @@ class CarController(CarControllerBase):
     # 0x57 at ~66.67 Hz: send on 2 out of every 3 frames
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
-      can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3))
+      # Update counter with observed value, get counter to send
+      counter, is_synced = self.lca_3_counter_sync.update(CS.msg_lca_3['COUNTER_1'])
+      can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3, counter))
       #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 

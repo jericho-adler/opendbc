@@ -94,7 +94,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, sp
 
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3: dict):
+def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3: dict, counter_value: int):
   """
   Create LCA_3 message for Volvo CMA platform.
   This message enables PSCM to accept LCA commands.
@@ -103,6 +103,7 @@ def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_lca_3: Dictionary containing LCA_3 message values
+    counter_value: Counter value to use (from pattern or stock)
   """
   signal_9 = 128 if lat_active else msg_lca_3['NEW_SIGNAL_9']
   if lat_active:
@@ -120,7 +121,7 @@ def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3:
     'SPEED_A': msg_lca_3['SPEED_A'],
     'SPEED_B': msg_lca_3['SPEED_B'],
     'NEW_SIGNAL_8': 1 if lat_active else msg_lca_3['NEW_SIGNAL_8'],
-    'COUNTER_1': msg_lca_3['COUNTER_1'],
+    'COUNTER_1': counter_value,
     'NEW_SIGNAL_7': 3 if lat_active else msg_lca_3['NEW_SIGNAL_7'],
     'NEW_SIGNAL_9': signal_9,
   }
