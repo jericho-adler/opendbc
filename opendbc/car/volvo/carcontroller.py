@@ -3,7 +3,7 @@ from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_speed_1_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
+from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -26,8 +26,9 @@ class CarController(CarControllerBase):
     # Counter management for LCA_3 (pattern-based)
     self.lca_3_counter_sync = LCA3CounterSync()
 
-    # Counter management for SPEED_1
-    self.speed_1_counter = None  # Will grab initial value from CarState
+    # Counter management for LCA_5 (formerly SPEED_1)
+    self.lca_5_counter = None  # Will grab initial value from CarState
+    self.lca_5_state_counter = 0  # State-dependent rolling counter (0-15)
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -106,18 +107,25 @@ class CarController(CarControllerBase):
                                             self.lca_2_counter_1, self.lca_2_counter_2))
       pass
 
-    # SPEED_1 - 0x67 - 50 Hz
-    # Modify LCA_RELATED_1/2 signals based on steering direction
+    # LCA_5 (formerly SPEED_1) - 0x67 - 50 Hz
+    # Contains wheel speeds + LCA signals (LCA_TURN_BITS, LCA_STATE_WITH_COUNTER, LCA_STEER_LEVEL)
     if self.frame % 2 == 0: # 50 Hz
       # Initialize counter from CarState on first run
-      if self.speed_1_counter is None:
-        self.speed_1_counter = CS.msg_speed_1['COUNTER']
+      if self.lca_5_counter is None:
+        self.lca_5_counter = CS.msg_lca_5['COUNTER']
 
       # Increment counter by +4, wrap at 15 (0xF never used)
-      self.speed_1_counter = (self.speed_1_counter + 4) % 15
+      self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      can_sends.append(create_speed_1_message(self.packer, CC.latActive, apply_torque,
-                                              CS.msg_speed_1, self.speed_1_counter))
+      # Increment state-dependent rolling counter only when actively steering
+      # (frozen at 0 when inactive, rolls 0-15 when active)
+      if CC.latActive and apply_torque != 0:
+        self.lca_5_state_counter = (self.lca_5_state_counter + 1) % 16
+      else:
+        self.lca_5_state_counter = 0  # Freeze at 0 when inactive
+
+      can_sends.append(create_lca_5_message(self.packer, CC.latActive, apply_torque,
+                                            CS.msg_lca_5, self.lca_5_counter, self.lca_5_state_counter))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active

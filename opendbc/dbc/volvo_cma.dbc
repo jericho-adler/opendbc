@@ -110,7 +110,7 @@ BO_ 96 SPEED_3: 8 XXX
  SG_ NEW_SIGNAL_4 : 31|4@0+ (1,0) [0|15] "" XXX
  SG_ NEW_SIGNAL_6 : 35|1@0+ (1,0) [0|1] "" XXX
 
-BO_ 103 SPEED_1: 8 XXX
+BO_ 103 LCA_5: 8 XXX
  SG_ WHEEL_SPEED_1 : 6|15@0+ (0.1,0) [0|255] "rpm" XXX
  SG_ NEW_SIGNAL_4 : 7|1@0+ (1,0) [0|1] "" XXX
  SG_ CHECKSUM : 23|8@0+ (1,0) [0|4095] "" XXX
@@ -118,8 +118,9 @@ BO_ 103 SPEED_1: 8 XXX
  SG_ COUNTER : 28|4@1+ (1,0) [0|15] "" XXX
  SG_ WHEEL_SPEED_2 : 39|15@0+ (0.1,0) [0|32767] "rpm" XXX
  SG_ NEW_SIGNAL_5 : 40|1@0+ (1,0) [0|1] "" XXX
- SG_ LCA_RELATED_1 : 55|8@0+ (1,0) [0|255] "" XXX
- SG_ LCA_RELATED_2 : 56|8@1+ (1,0) [0|255] "" XXX
+ SG_ LCA_TURN_BITS : 55|8@0+ (1,0) [0|255] "" XXX
+ SG_ LCA_STATE_WITH_COUNTER : 59|4@0+ (1,0) [0|15] "" XXX
+ SG_ LCA_STEER_LEVEL : 60|4@1- (1,0) [0|255] "" XXX
 
 BO_ 104 SPEED_2: 8 XXX
  SG_ ALL_BYTES : 0|64@1+ (1,0) [0|1.84467440737096e+19] "" XXX
@@ -211,8 +212,8 @@ CM_ SG_ 88 CURVE_RIGHT "Only appears to be HIGH on curve right, LOW curve left";
 CM_ SG_ 88 LCA_STEER "Seems torque-based, signed, follows the road curvature";
 CM_ SG_ 103 WHEEL_SPEED_1 "Possible Front Left  (FL)";
 CM_ SG_ 103 WHEEL_SPEED_2 "Possible Front Right (FR)";
-CM_ SG_ 103 LCA_RELATED_1 "Left curve 128; Right curve 255";
-CM_ SG_ 103 LCA_RELATED_2 "LCA_RELATED_1=255, 2=192;  1=128, 2=0, 1=186, 2=0    ";
+CM_ SG_ 103 LCA_TURN_BITS "Left curve 128; Right curve 255";
+CM_ SG_ 103 LCA_STEER_LEVEL "Follows approximatedly LCA.LCA_STEER, same sign, from -7 to +8";
 CM_ SG_ 104 WHEEL_SPEED_3 "Possible Rear Left (RR)";
 CM_ SG_ 104 WHEEL_SPEED_4 "Possibe Rear Right (RR)";
 CM_ SG_ 592 ACCELERATOR_PEDAL_POS "Full gas ~200; Idle ~20";

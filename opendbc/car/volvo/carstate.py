@@ -23,7 +23,7 @@ class CarState(CarStateBase):
     self.msg_lca_3 = {}
     self.msg_gear_position = {}
     self.pilot_assist_engaged = False
-    self.msg_speed_1 = {}
+    self.msg_lca_5 = {}  # Formerly msg_speed_1
     self.msg_speed_2 = {}
     self.msg_speed_3 = {}
     self.msg_0x1a = {}
@@ -123,7 +123,7 @@ class CarState(CarStateBase):
     self.msg_lca_2 = cp_main.vl['LCA_2']
     self.msg_lca_3 = cp_main.vl['LCA_3']
     self.msg_lca_4 = cp_main.vl['LCA_4']
-    self.msg_speed_1 = cp_main.vl['SPEED_1']
+    self.msg_lca_5 = cp_main.vl['LCA_5']
     self.msg_speed_2 = cp_main.vl['SPEED_2']
     self.msg_speed_3 = cp_main.vl['SPEED_3']
     self.msg_0x1a = cp_main.vl['NEW_MSG_1A']

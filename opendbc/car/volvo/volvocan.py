@@ -227,47 +227,66 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_speed_1_message(packer, lat_active: bool, apply_torque: int, msg_speed_1: dict, counter: int):
+def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5: dict, counter: int, lca_state_counter: int):
   """
-  Create SPEED_1 message (0x67) with LCA-related signals for lateral control.
+  Create LCA_5 message (0x67, formerly SPEED_1) with LCA-related signals for lateral control.
 
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    apply_torque: Steering torque to apply (-255 to 255)
-    msg_speed_1: Dictionary containing SPEED_1 message values from car
-    counter: Counter value (0-14, increments by 4, wraps at 15)
+    apply_torque: Steering torque to apply (-127 to 127, already scaled by CarController)
+    msg_lca_5: Dictionary containing LCA_5 message values from car
+    counter: Counter value (0-15, increments by 1)
+    lca_state_counter: State-dependent rolling counter (0-15, freezes at 0 when inactive)
   """
-  # Determine LCA_RELATED_1 and LCA_RELATED_2 based on apply_torque
+  # Determine LCA_TURN_BITS based on apply_torque
+  # Based on discovered behavior: 0xBA (186) inactive, 0x80 (128) left/mode1, 0xFF (255) right/mode2
   if lat_active:
-    if apply_torque > 0:  # Left turn
-      lca_related_1 = 128
-      lca_related_2 = 0
-    elif apply_torque < 0:  # Right turn
-      lca_related_1 = 255
-      lca_related_2 = 255
-    else:  # Straight/neutral
-      lca_related_1 = 186
-      lca_related_2 = 0
+    if apply_torque == 0:  # Straight/neutral/inactive
+      lca_turn_bits = 186  # 0xBA
+    elif apply_torque > 0:  # Left turn
+      lca_turn_bits = 128  # 0x80
+    else:  # Right turn (apply_torque < 0)
+      lca_turn_bits = 255  # 0xFF
   else:
-    lca_related_1 = msg_speed_1['LCA_RELATED_1']
-    lca_related_2 = msg_speed_1['LCA_RELATED_2']
+    lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
+
+  # Determine LCA_STATE_WITH_COUNTER based on LCA_TURN_BITS
+  # Rule: Frozen at 0 when inactive (186), rolling 0-15 when active (128 or 255)
+  if lat_active:
+    if lca_turn_bits == 186:  # Inactive state
+      lca_state_with_counter = 0  # Frozen at 0
+    else:  # Active states (128 or 255)
+      lca_state_with_counter = lca_state_counter  # Rolling counter 0-15
+  else:
+    lca_state_with_counter = msg_lca_5['LCA_STATE_WITH_COUNTER']
+
+  # Determine LCA_STEER_LEVEL: scale apply_torque (-127 to 127) to stock range (-7 to +8)
+  if lat_active:
+    # Stock LCA uses asymmetric range: -7 to +8 (not symmetric -8 to +7)
+    # apply_torque is already scaled to -127 to +127 by CarController
+    # Use simple division by 16 for fair granularity, then clamp to stock range
+    lca_steer_level = int(round(apply_torque / 16.0))
+    lca_steer_level = max(-7, min(8, lca_steer_level))
+  else:
+    lca_steer_level = msg_lca_5['LCA_STEER_LEVEL']
 
   # Build values dictionary
   values = {
-    'WHEEL_SPEED_1': msg_speed_1['WHEEL_SPEED_1'],
-    'NEW_SIGNAL_4': msg_speed_1['NEW_SIGNAL_4'],
-    'NEW_SIGNAL_1': msg_speed_1['NEW_SIGNAL_1'],
+    'WHEEL_SPEED_1': msg_lca_5['WHEEL_SPEED_1'],
+    'NEW_SIGNAL_4': msg_lca_5['NEW_SIGNAL_4'],
+    'NEW_SIGNAL_1': msg_lca_5['NEW_SIGNAL_1'],
     'COUNTER': counter,
-    'WHEEL_SPEED_2': msg_speed_1['WHEEL_SPEED_2'],
-    'NEW_SIGNAL_5': msg_speed_1['NEW_SIGNAL_5'],
-    'LCA_RELATED_1': lca_related_1,
-    'LCA_RELATED_2': lca_related_2,
+    'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
+    'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
+    'LCA_TURN_BITS': lca_turn_bits,
+    'LCA_STATE_WITH_COUNTER': lca_state_with_counter,
+    'LCA_STEER_LEVEL': lca_steer_level,
   }
 
   # Build bytes for checksum calculation
   # Message structure: byte0, byte1, byte2 (checksum), byte3, byte4, byte5, byte6, byte7
-  # We need: byte0, byte1, byte3, byte4, byte5 for checksum
+  # We need: byte0, byte1, byte3, byte4, byte5 for checksum (bytes 6-7 contain LCA signals)
   def build_bytes(vals: dict) -> list[int]:
     # Byte 0: WHEEL_SPEED_1[6:0] (bits 6-0) + NEW_SIGNAL_4 (bit 7)
     byte0 = (int(vals['WHEEL_SPEED_1']) & 0x7F) | ((int(vals['NEW_SIGNAL_4']) & 0x01) << 7)
@@ -285,7 +304,7 @@ def create_speed_1_message(packer, lat_active: bool, apply_torque: int, msg_spee
   built = build_bytes(values)
   values['CHECKSUM'] = checksum_speed_1_message(built[0], built[1], built[2], built[3], built[4])
 
-  return packer.make_can_msg('SPEED_1', 2, values)
+  return packer.make_can_msg('LCA_5', 2, values)
 
 def create_speed_2_message(packer, msg_speed_2: dict):
   """
