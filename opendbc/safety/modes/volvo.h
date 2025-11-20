@@ -156,7 +156,7 @@ static safety_config volvo_init(uint16_t param) {
     {VOLVO_LCA_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_3 message sent to party bus
     {VOLVO_LCA_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_2 message sent to party bus (spoof PILOT_ASSIST_ENGAGED for PSCM)
     {VOLVO_LCA_4, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_4 message sent to party bus (spoof LCA_ENABLE for PA state)
-    //{VOLVO_SPEED_1, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_1 message sent to main bus
+    {VOLVO_SPEED_1, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_1 message sent to main bus
     //{VOLVO_SPEED_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_2 message sent to main bus
     //{VOLVO_SPEED_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_3 message sent to main bus
     //{VOLVO_0x1a, VOLVO_PARTY_BUS, 8, .check_relay = true},  // 0x1a message sent to main bus

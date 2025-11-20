@@ -267,3 +267,138 @@ class LCA3CounterSync:
   def is_synchronized(self) -> bool:
     """Returns True if we have synchronized to the pattern."""
     return self.pattern_index is not None
+
+def checksum_speed_1_message(byte0: int, byte1: int, byte3: int, byte4: int, byte5: int) -> int:
+  """
+  Calculate checksum for CAN message 0x67 (byte 2)
+
+  Args:
+    byte0: Byte 0 (0-255)
+    byte1: Byte 1 (0-255)
+    byte3: Byte 3 (0-255)
+    byte4: Byte 4 (0-255)
+    byte5: Byte 5 (0-255)
+    byte6: Byte 6 (0-255)
+    byte7: Byte 7 (0-255)
+
+  Returns:
+    int: Checksum value (0-255) for byte 2
+
+  Example:
+    >>> checksum = calculate_checksum_0x67(0x80, 0x00, 0x4F, 0x00, 0x00, 0xBA, 0x00)
+    >>> print(f"0x{checksum:02X}")
+    0x32
+  """
+
+  # Helper function to extract a bit (LSB = bit 0)
+  def bit(byte_val, pos):
+    return (byte_val >> pos) & 1
+
+  checksum = 0
+
+  # Bit 0: XOR of 13 bits
+  checksum |= (
+    bit(byte0, 2) ^ bit(byte0, 3) ^ bit(byte0, 5) ^ bit(byte0, 7) ^
+    bit(byte1, 2) ^
+    bit(byte3, 4) ^ bit(byte3, 6) ^
+    bit(byte4, 0) ^ bit(byte4, 1) ^ bit(byte4, 5) ^ bit(byte4, 6) ^
+    bit(byte5, 3) ^ bit(byte5, 6)
+  ) << 0
+
+  # Bit 1: XOR of 12 bits
+  checksum |= (
+    bit(byte0, 0) ^ bit(byte0, 3) ^ bit(byte0, 4) ^ bit(byte0, 7) ^
+    bit(byte1, 0) ^ bit(byte1, 3) ^
+    bit(byte3, 5) ^ bit(byte3, 7) ^
+    bit(byte4, 2) ^ bit(byte4, 6) ^
+    bit(byte5, 4) ^ bit(byte5, 7)
+  ) << 1
+
+  # Bit 2: XOR of 17 bits
+  checksum |= (
+    bit(byte0, 1) ^ bit(byte0, 2) ^ bit(byte0, 3) ^ bit(byte0, 4) ^
+    bit(byte1, 0) ^ bit(byte1, 1) ^ bit(byte1, 2) ^ bit(byte1, 4) ^
+    bit(byte3, 4) ^
+    bit(byte4, 1) ^ bit(byte4, 3) ^ bit(byte4, 5) ^ bit(byte4, 6) ^
+    bit(byte5, 1) ^ bit(byte5, 3) ^ bit(byte5, 5) ^ bit(byte5, 6)
+  ) << 2
+
+  # Bit 3: XOR of 19 bits
+  checksum |= (
+    bit(byte0, 0) ^ bit(byte0, 4) ^ bit(byte0, 7) ^
+    bit(byte1, 1) ^ bit(byte1, 3) ^ bit(byte1, 5) ^
+    bit(byte3, 4) ^ bit(byte3, 5) ^ bit(byte3, 6) ^
+    bit(byte4, 0) ^ bit(byte4, 1) ^ bit(byte4, 2) ^ bit(byte4, 4) ^ bit(byte4, 5) ^
+    bit(byte5, 1) ^ bit(byte5, 2) ^ bit(byte5, 3) ^ bit(byte5, 4) ^ bit(byte5, 7)
+  ) << 3
+
+  # Bit 4: XOR of 16 bits
+  checksum |= (
+    bit(byte0, 1) ^ bit(byte0, 2) ^ bit(byte0, 3) ^ bit(byte0, 7) ^
+    bit(byte1, 4) ^ bit(byte1, 6) ^
+    bit(byte3, 4) ^ bit(byte3, 5) ^ bit(byte3, 7) ^
+    bit(byte4, 1) ^ bit(byte4, 2) ^ bit(byte4, 3) ^
+    bit(byte5, 2) ^ bit(byte5, 4) ^ bit(byte5, 5) ^ bit(byte5, 6)
+  ) << 4
+
+  # Bit 5: XOR of 15 bits
+  checksum |= (
+    bit(byte0, 0) ^ bit(byte0, 2) ^ bit(byte0, 3) ^ bit(byte0, 4) ^
+    bit(byte1, 5) ^ bit(byte1, 7) ^
+    bit(byte3, 5) ^ bit(byte3, 6) ^
+    bit(byte4, 2) ^ bit(byte4, 3) ^ bit(byte4, 4) ^
+    bit(byte5, 3) ^ bit(byte5, 5) ^ bit(byte5, 6) ^ bit(byte5, 7)
+  ) << 5
+
+  # Bit 6: XOR of 19 bits
+  checksum |= (
+    bit(byte0, 0) ^ bit(byte0, 1) ^ bit(byte0, 3) ^ bit(byte0, 4) ^ bit(byte0, 5) ^ bit(byte0, 7) ^
+    bit(byte1, 0) ^ bit(byte1, 6) ^
+    bit(byte3, 4) ^ bit(byte3, 6) ^ bit(byte3, 7) ^
+    bit(byte4, 0) ^ bit(byte4, 3) ^ bit(byte4, 4) ^ bit(byte4, 5) ^
+    bit(byte5, 1) ^ bit(byte5, 4) ^ bit(byte5, 6) ^ bit(byte5, 7)
+  ) << 6
+
+  # Bit 7: XOR of 15 bits
+  checksum |= (
+    bit(byte0, 1) ^ bit(byte0, 2) ^ bit(byte0, 4) ^ bit(byte0, 5) ^
+    bit(byte1, 1) ^ bit(byte1, 7) ^
+    bit(byte3, 5) ^ bit(byte3, 7) ^
+    bit(byte4, 0) ^ bit(byte4, 4) ^ bit(byte4, 5) ^ bit(byte4, 6) ^
+    bit(byte5, 2) ^ bit(byte5, 5) ^ bit(byte5, 7)
+  ) << 7
+
+  return checksum
+
+
+# Test examples
+if __name__ == "__main__":
+  print("CAN 0x67 Checksum Calculator")
+  print("=" * 60)
+
+  # Test cases
+  tests = [
+    ([0x80, 0x00, 0x4F, 0x00, 0x00, 0xBA, 0x00], 0x32),
+    ([0x80, 0x00, 0x8F, 0x00, 0x00, 0xBA, 0x00], 0x89),
+    ([0x80, 0x00, 0xCF, 0x00, 0x00, 0xBA, 0x00], 0xE0),
+    ([0x80, 0x00, 0x1F, 0x00, 0x00, 0xBA, 0x00], 0x06),
+  ]
+
+  all_passed = True
+  for i, (bytes_list, expected) in enumerate(tests, 1):
+    calculated = calculate_checksum_0x67(*bytes_list)
+    status = "✓" if calculated == expected else "✗"
+
+    print(f"\nTest {i}: {status}")
+    print(f"  Bytes:      {' '.join(f'{b:02X}' for b in bytes_list)}")
+    print(f"  Expected:   0x{expected:02X}")
+    print(f"  Calculated: 0x{calculated:02X}")
+
+    if calculated != expected:
+      all_passed = False
+
+  print("\n" + "=" * 60)
+  if all_passed:
+    print("All tests passed! ✓")
+  else:
+    print("Some tests failed! ✗")

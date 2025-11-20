@@ -26,6 +26,9 @@ class CarController(CarControllerBase):
     # Counter management for LCA_3 (pattern-based)
     self.lca_3_counter_sync = LCA3CounterSync()
 
+    # Counter management for SPEED_1
+    self.speed_1_counter = None  # Will grab initial value from CarState
+
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
     can_sends = []
@@ -102,6 +105,19 @@ class CarController(CarControllerBase):
       can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2,
                                             self.lca_2_counter_1, self.lca_2_counter_2))
       pass
+
+    # SPEED_1 - 0x67 - 50 Hz
+    # Modify LCA_RELATED_1/2 signals based on steering direction
+    if self.frame % 2 == 0: # 50 Hz
+      # Initialize counter from CarState on first run
+      if self.speed_1_counter is None:
+        self.speed_1_counter = CS.msg_speed_1['COUNTER']
+
+      # Increment counter by +4, wrap at 15 (0xF never used)
+      self.speed_1_counter = (self.speed_1_counter + 4) % 15
+
+      can_sends.append(create_speed_1_message(self.packer, CC.latActive, apply_torque,
+                                              CS.msg_speed_1, self.speed_1_counter))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active

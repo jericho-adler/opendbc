@@ -1,5 +1,5 @@
 import random
-from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message
+from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message, checksum_speed_1_message
 from opendbc.car.carlog import carlog
 
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
@@ -227,17 +227,63 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_speed_1_message(packer, msg_speed_1: dict):
+def create_speed_1_message(packer, lat_active: bool, apply_torque: int, msg_speed_1: dict, counter: int):
   """
-  Forward SPEED_1 message (0x67) by copying all bytes.
+  Create SPEED_1 message (0x67) with LCA-related signals for lateral control.
 
   Args:
     packer: CAN packer instance
+    lat_active: Whether lateral control is active
+    apply_torque: Steering torque to apply (-255 to 255)
     msg_speed_1: Dictionary containing SPEED_1 message values from car
+    counter: Counter value (0-14, increments by 4, wraps at 15)
   """
+  # Determine LCA_RELATED_1 and LCA_RELATED_2 based on apply_torque
+  if lat_active:
+    if apply_torque > 0:  # Left turn
+      lca_related_1 = 128
+      lca_related_2 = 0
+    elif apply_torque < 0:  # Right turn
+      lca_related_1 = 255
+      lca_related_2 = 255
+    else:  # Straight/neutral
+      lca_related_1 = 186
+      lca_related_2 = 0
+  else:
+    lca_related_1 = msg_speed_1['LCA_RELATED_1']
+    lca_related_2 = msg_speed_1['LCA_RELATED_2']
+
+  # Build values dictionary
   values = {
-    'ALL_BYTES': msg_speed_1['ALL_BYTES'],
+    'WHEEL_SPEED_1': msg_speed_1['WHEEL_SPEED_1'],
+    'NEW_SIGNAL_4': msg_speed_1['NEW_SIGNAL_4'],
+    'NEW_SIGNAL_1': msg_speed_1['NEW_SIGNAL_1'],
+    'COUNTER': counter,
+    'WHEEL_SPEED_2': msg_speed_1['WHEEL_SPEED_2'],
+    'NEW_SIGNAL_5': msg_speed_1['NEW_SIGNAL_5'],
+    'LCA_RELATED_1': lca_related_1,
+    'LCA_RELATED_2': lca_related_2,
   }
+
+  # Build bytes for checksum calculation
+  # Message structure: byte0, byte1, byte2 (checksum), byte3, byte4, byte5, byte6, byte7
+  # We need: byte0, byte1, byte3, byte4, byte5 for checksum
+  def build_bytes(vals: dict) -> list[int]:
+    # Byte 0: WHEEL_SPEED_1[6:0] (bits 6-0) + NEW_SIGNAL_4 (bit 7)
+    byte0 = (int(vals['WHEEL_SPEED_1']) & 0x7F) | ((int(vals['NEW_SIGNAL_4']) & 0x01) << 7)
+    # Byte 1: WHEEL_SPEED_1[14:7] (upper 8 bits of 15-bit value)
+    byte1 = (int(vals['WHEEL_SPEED_1']) >> 7) & 0xFF
+    # Byte 3: NEW_SIGNAL_1 (bits 3-0) + COUNTER (bits 7-4)
+    byte3 = (int(vals['NEW_SIGNAL_1']) & 0x0F) | ((int(vals['COUNTER']) & 0x0F) << 4)
+    # Byte 4: WHEEL_SPEED_2[6:0] (bits 6-0) + NEW_SIGNAL_5 (bit 7)
+    byte4 = (int(vals['WHEEL_SPEED_2']) & 0x7F) | ((int(vals['NEW_SIGNAL_5']) & 0x01) << 7)
+    # Byte 5: WHEEL_SPEED_2[14:7] (upper 8 bits of 15-bit value)
+    byte5 = (int(vals['WHEEL_SPEED_2']) >> 7) & 0xFF
+    return [byte0, byte1, byte3, byte4, byte5]
+
+  # Calculate checksum
+  built = build_bytes(values)
+  values['CHECKSUM'] = checksum_speed_1_message(built[0], built[1], built[2], built[3], built[4])
 
   return packer.make_can_msg('SPEED_1', 2, values)
 
