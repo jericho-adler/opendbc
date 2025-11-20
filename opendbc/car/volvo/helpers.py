@@ -268,9 +268,9 @@ class LCA3CounterSync:
     """Returns True if we have synchronized to the pattern."""
     return self.pattern_index is not None
 
-def checksum_speed_1_message(byte0: int, byte1: int, byte3: int, byte4: int, byte5: int) -> int:
+def checksum_lca_5_message(byte0: int, byte1: int, byte3: int, byte4: int, byte5: int) -> int:
   """
-  Calculate checksum for CAN message 0x67 (byte 2)
+  Calculate checksum for LCA_5 message 0x67 (byte 2)
 
   Args:
     byte0: Byte 0 (0-255)

@@ -1,5 +1,5 @@
 import random
-from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message, checksum_speed_1_message
+from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message, checksum_lca_5_message
 from opendbc.car.carlog import carlog
 
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
@@ -251,15 +251,15 @@ def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5:
   else:
     lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
 
-  # Determine LCA_STATE_WITH_COUNTER based on LCA_TURN_BITS
+  # Determine LCA_STATE_COUNTER based on LCA_TURN_BITS
   # Rule: Frozen at 0 when inactive (186), rolling 0-15 when active (128 or 255)
   if lat_active:
     if lca_turn_bits == 186:  # Inactive state
-      lca_state_with_counter = 0  # Frozen at 0
+      lca_state_counter_value = 0  # Frozen at 0
     else:  # Active states (128 or 255)
-      lca_state_with_counter = lca_state_counter  # Rolling counter 0-15
+      lca_state_counter_value = lca_state_counter  # Rolling counter 0-15
   else:
-    lca_state_with_counter = msg_lca_5['LCA_STATE_WITH_COUNTER']
+    lca_state_counter_value = msg_lca_5['LCA_STATE_COUNTER']
 
   # Determine LCA_STEER_LEVEL: scale apply_torque (-127 to 127) to stock range (-7 to +8)
   if lat_active:
@@ -280,7 +280,7 @@ def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5:
     'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
     'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
     'LCA_TURN_BITS': lca_turn_bits,
-    'LCA_STATE_WITH_COUNTER': lca_state_with_counter,
+    'LCA_STATE_COUNTER': lca_state_counter_value,
     'LCA_STEER_LEVEL': lca_steer_level,
   }
 
@@ -302,7 +302,7 @@ def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5:
 
   # Calculate checksum
   built = build_bytes(values)
-  values['CHECKSUM'] = checksum_speed_1_message(built[0], built[1], built[2], built[3], built[4])
+  values['CHECKSUM'] = checksum_lca_5_message(built[0], built[1], built[2], built[3], built[4])
 
   return packer.make_can_msg('LCA_5', 2, values)
 
