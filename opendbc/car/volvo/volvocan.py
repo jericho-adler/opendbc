@@ -310,7 +310,7 @@ def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5:
     #lca_steer_level = calculate_lca_steer_level_simple(current_steering_wheel_angle)
     #if apply_torque < 0:
     #  lca_steer_level = -lca_steer_level
-    lca_steer_level = 0
+    lca_steer_level = -3
 
   else:
     lca_steer_level = msg_lca_5['LCA_STEER_LEVEL']
