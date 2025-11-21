@@ -40,7 +40,7 @@ class CarState(CarStateBase):
     # Basic vehicle state from BUS1_SPEED on PT bus
     ret.vEgoRaw = cp_pt.vl["BUS1_SPEED"]["BUS1_SPEED"]
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
-    ret.standstill = ret.vEgoRaw <= 0.09375
+    ret.standstill = ret.vEgoRaw <= 0.1 # 0.1 m/s
 
     # gas
     ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance

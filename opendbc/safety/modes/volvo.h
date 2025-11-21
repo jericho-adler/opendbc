@@ -59,8 +59,8 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
       // Signal: BUS1_SPEED (0.015625 m/s per bit)
       // DBC: SG_ BUS1_SPEED : 23|16@0+ (0.015625,0) [0|65535] "m/s" XXX
       uint16_t speed_raw = ((msg->data[2] & 0xFFU) << 8) | msg->data[3];
-      vehicle_moving = speed_raw > 6; // > 0.09375 m/s (approx 0.1 m/s)
-      UPDATE_VEHICLE_SPEED(speed_raw * 0.015625);
+      vehicle_moving = (speed_raw * 0.01886) > 0.1; // > 0.1 m/s
+      UPDATE_VEHICLE_SPEED(speed_raw * 0.01886);
     }
 
     if (msg->addr == VOLVO_BUS1_CRUISE_CONTROL) {
