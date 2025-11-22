@@ -138,14 +138,16 @@ class CarController(CarControllerBase):
 
       # Increment state-dependent rolling counter when openpilot or stock Pilot Assist is engaged
       # (frozen at 0 when inactive, rolls 0-15 when active based on LCA_TURN_BITS in volvocan.py)
-      if CC.latActive or CS.pilot_assist_engaged:
+      #lca_5_pilot_assist_engaged = CS.pilot_assist_engaged
+      lca_5_pilot_assist_engaged = False
+      if CC.latActive or lca_5_pilot_assist_engaged:
         self.lca_5_state_counter = (self.lca_5_state_counter + 1) % 16
       else:
         self.lca_5_state_counter = 0  # Reset when both are disengaged
 
       can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer, lca_steer_level,
                                             CS.msg_lca_5, self.lca_5_counter, self.lca_5_state_counter,
-                                            CS.out.steeringAngleDeg, CS.pilot_assist_engaged))
+                                            CS.out.steeringAngleDeg, lca_5_pilot_assist_engaged))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active
