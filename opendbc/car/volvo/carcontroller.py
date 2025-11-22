@@ -5,6 +5,7 @@ from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
+from opendbc.car.volvo.lca_commands import LCACommandsTorqueBased
 
 
 class CarController(CarControllerBase):
@@ -30,28 +31,46 @@ class CarController(CarControllerBase):
     self.lca_5_counter = None  # Will grab initial value from CarState
     self.lca_5_state_counter = 0  # State-dependent rolling counter (0-15)
 
+    self.lca_commands = LCACommandsTorqueBased()
+    self.last_lat_active = False  # Track state
+
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
     can_sends = []
     actuators = CC.actuators
+
+    # Detect disengagement
+    if not CC.latActive and self.last_lat_active:
+      self.lca_commands.reset()  # Clear state ← IMPORTANT!
 
     # lateral control - torque-based steering
     # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
     # Stock LCA is permanently blocked by panda safety, so we must always send
     if self.frame % CarControllerParams.STEER_STEP == 0: # 100 Hz
       # Convert normalized torque to raw torque value
-      apply_torque = int(round(actuators.torque * CarControllerParams.STEER_MAX))
+      #apply_torque = int(round(actuators.torque * CarControllerParams.STEER_MAX))
+
+      # Your apply_torque: +1.0 = left, -1.0 = right
+      apply_torque = actuators.torque  # Already normalized [-1.0, +1.0]
+
+      # Disable torque when not active
+      if not CC.latActive:
+        apply_torque = 0
+        lca_steer = 0
+        lca_steer_level = 0
+      else:
+        # Calculate commands
+        lca_steer, lca_steer_level = self.lca_commands.update(
+            apply_torque,
+            dt=0.01  # Your loop period
+        )
 
       # Apply driver torque limits
       # apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last,
       #                                                CS.out.steeringTorque, CarControllerParams)
 
-      # Disable torque when not active
-      if not CC.latActive:
-        apply_torque = 0
-
       # LCA - 0x58 - 100 Hz
-      can_sends.append(create_lca_steering(self.packer, CC.latActive, apply_torque, CS.msg_lca))
+      can_sends.append(create_lca_steering(self.packer, CC.latActive, lca_steer, CS.msg_lca))
       self.apply_torque_last = apply_torque
 
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
@@ -80,7 +99,7 @@ class CarController(CarControllerBase):
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       # Update counter with observed value, get counter to send
       counter, is_synced = self.lca_3_counter_sync.update(CS.msg_lca_3['COUNTER_1'])
-      can_sends.append(create_lca_3_message(self.packer, CC.latActive, apply_torque, CS.msg_lca_3, counter))
+      can_sends.append(create_lca_3_message(self.packer, CC.latActive, lca_steer, CS.msg_lca_3, counter))
       #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 
@@ -124,7 +143,7 @@ class CarController(CarControllerBase):
       else:
         self.lca_5_state_counter = 0  # Reset when both are disengaged
 
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, apply_torque,
+      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer, lca_steer_level,
                                             CS.msg_lca_5, self.lca_5_counter, self.lca_5_state_counter,
                                             CS.out.steeringAngleDeg, CS.pilot_assist_engaged))
 
@@ -145,7 +164,9 @@ class CarController(CarControllerBase):
       pass
 
     new_actuators = actuators.as_builder()
-    new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
+    #new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
+    new_actuators.torque = self.apply_torque_last
     new_actuators.torqueOutputCan = self.apply_torque_last
     self.frame += 1
+    self.last_lat_active = CC.latActive
     return new_actuators, can_sends

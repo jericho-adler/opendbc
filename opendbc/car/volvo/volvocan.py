@@ -14,7 +14,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    apply_torque: Steering torque to apply (-255 to 255)
+    apply_torque: Steering torque to apply (-127 to +127)
     msg_lca: Dictionary containing LCA message values
   """
   if not lat_active:
@@ -227,14 +227,15 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5: dict, counter: int, lca_state_counter: int, current_steering_wheel_angle: float, stock_lca_engaged: bool):
+def create_lca_5_message(packer, lat_active: bool, lca_steer: int, lca_steer_level: int, msg_lca_5: dict, counter: int, lca_state_counter: int, current_steering_wheel_angle: float, stock_lca_engaged: bool):
   """
   Create LCA_5 message (0x67, formerly SPEED_1) with LCA-related signals for lateral control.
 
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    apply_torque: Steering torque to apply (-127 to 127, already scaled by CarController)
+    lca_steer: Steering torque to apply (-127 to 127, already scaled by CarController)
+    lca_steer_level: LCA_STEER_LEVEL to apply (-5 to +5)
     msg_lca_5: Dictionary containing LCA_5 message values from car
     counter: Counter value (0-15, increments by 1)
     lca_state_counter: State-dependent rolling counter (0-15, freezes at 0 when inactive)
@@ -244,9 +245,9 @@ def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5:
   # Determine LCA_TURN_BITS based on apply_torque
   # Based on discovered behavior: 0xBA (186) inactive, 0x80 (128) left/mode1, 0xFF (255) right/mode2
   if lat_active:
-    if apply_torque == 0:  # Straight/neutral/inactive
+    if lca_steer == 0:  # Straight/neutral/inactive
       lca_turn_bits = 186  # 0xBA
-    elif apply_torque > 0:  # Left turn
+    elif lca_steer > 0:  # Left turn
       lca_turn_bits = 128  # 0x80
     else:  # Right turn (apply_torque < 0)
       lca_turn_bits = 255  # 0xFF
@@ -266,52 +267,7 @@ def create_lca_5_message(packer, lat_active: bool, apply_torque: int, msg_lca_5:
 
   # Determine LCA_STEER_LEVEL: scale apply_torque (-127 to 127) to stock range (-7 to +8)
   if lat_active:
-    # Stock LCA uses asymmetric range: -7 to +8 (not symmetric -8 to +7)
-    # apply_torque is already scaled to -127 to +127 by CarController
-    # Use simple division by 16 for fair granularity, then clamp to stock range
-    #lca_steer_level = int(round(apply_torque / 16.0))
-    #lca_steer_level = max(-7, min(8, lca_steer_level))
-
-    def calculate_lca_steer_level_simple(steering_angle: float) -> int:
-      """
-      Simplified version without hysteresis - USE TRACKER VERSION IN PRODUCTION!
-
-      Args:
-          steering_angle: Steering wheel angle in degrees
-
-      Returns:
-          LCA_STEER_LEVEL (-5 to +5)
-      """
-      abs_angle = abs(steering_angle)
-
-      if abs_angle < 0.5:
-        abs_level = 0
-      elif abs_angle < 1.0:
-        abs_level = 1
-      elif abs_angle < 2.0:
-        abs_level = 2
-      elif abs_angle < 3.0:
-        abs_level = 3
-      elif abs_angle < 4.0:
-        abs_level = 4
-      else:
-        abs_level = 5  # Cap at 5
-
-      # # Apply sign
-      # if steering_angle > 0:
-      #   return abs_level
-      # elif steering_angle < 0:
-      #   return -abs_level
-      # else:
-      #   return 0
-
-      return abs_level
-
-    lca_steer_level = calculate_lca_steer_level_simple(current_steering_wheel_angle)
-    if apply_torque < 0:
-      lca_steer_level = -lca_steer_level
-
-
+    lca_steer_level = lca_steer_level
   else:
     lca_steer_level = msg_lca_5['LCA_STEER_LEVEL']
 
