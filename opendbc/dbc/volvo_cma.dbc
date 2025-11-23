@@ -214,4 +214,5 @@ CM_ SG_ 103 WHEEL_SPEED_2 "Possible Front Right (FR)";
 CM_ SG_ 103 LCA_TURN_BITS "Left curve 128; Right curve 255";
 CM_ SG_ 104 WHEEL_SPEED_3 "Possible Rear Left (RR)";
 CM_ SG_ 104 WHEEL_SPEED_4 "Possibe Rear Right (RR)";
+CM_ SG_ 144 BYTE_5 "Seems to increase/correlate on curves, even when LCA off";
 CM_ SG_ 592 ACCELERATOR_PEDAL_POS "Full gas ~200; Idle ~20";

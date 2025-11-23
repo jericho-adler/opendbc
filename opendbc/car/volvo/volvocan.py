@@ -395,7 +395,7 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
 
-def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict):
+def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_steer: int):
   """
   Create LCA_4 (0x90) message to maintain Pilot Assist state when openpilot is active.
 
@@ -430,7 +430,7 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict):
     'BYTE_2': msg_lca_4['BYTE_2'],
     'BYTE_3': msg_lca_4['BYTE_3'],
     'BYTE_4': msg_lca_4['BYTE_4'],
-    'BYTE_5': msg_lca_4['BYTE_5'],
+    'BYTE_5': 127 if lca_steer > 0 else -127, #msg_lca_4['BYTE_5'],
     'BYTE_6': msg_lca_4['BYTE_6'],
     'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
     'BYTE_7_NIBBLE_HI': msg_lca_4['BYTE_7_NIBBLE_HI'],

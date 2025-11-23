@@ -141,7 +141,7 @@ class CarController(CarControllerBase):
     self.lca_4_acc += 29
     if self.lca_4_acc >= 100:
       self.lca_4_acc -= 100
-      can_sends.append(create_lca_4_message(self.packer, CC.latActive, CS.msg_lca_4))
+      can_sends.append(create_lca_4_message(self.packer, CC.latActive, CS.msg_lca_4, lca_steer))
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach
