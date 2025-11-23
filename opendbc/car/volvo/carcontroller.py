@@ -38,7 +38,8 @@ class CarController(CarControllerBase):
 
     # Detect disengagement
     if not CC.latActive and self.last_lat_active:
-      self.lca_commands.reset()  # Clear state ← IMPORTANT!
+      #self.lca_commands.reset()  # Clear state ← IMPORTANT!
+      pass
 
     # lateral control - torque-based steering
     # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
