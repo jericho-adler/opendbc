@@ -227,49 +227,36 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_lca_5_message(packer, lat_active: bool, lca_steer: int, lca_steer_level: int, msg_lca_5: dict, counter: int, lca_state_counter: int, current_steering_wheel_angle: float, stock_lca_engaged: bool):
+def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: dict, counter: int, current_steering_wheel_angle: float):
   """
   Create LCA_5 message (0x67, formerly SPEED_1) with LCA-related signals for lateral control.
 
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    lca_steer: Steering torque to apply (-127 to 127, already scaled by CarController)
-    lca_steer_level: LCA_STEER_LEVEL to apply (-5 to +5)
+    lca_steer: LCA_5_STEER value (signed int8: -128 to 127)
     msg_lca_5: Dictionary containing LCA_5 message values from car
     counter: Counter value (0-15, increments by 1)
-    lca_state_counter: State-dependent rolling counter (0-15, freezes at 0 when inactive)
     current_steering_wheel_angle: Current steering wheel angle in degrees
-    stock_lca_engaged: Whether stock Pilot Assist is engaged
   """
-  # Determine LCA_TURN_BITS based on apply_torque
+  # Determine LCA_TURN_BITS based on lca_steer
   # Based on discovered behavior: 0xBA (186) inactive, 0x80 (128) left/mode1, 0xFF (255) right/mode2
   if lat_active:
     if lca_steer == 0:  # Straight/neutral/inactive
       lca_turn_bits = 186  # 0xBA
     elif lca_steer > 0:  # Left turn
       lca_turn_bits = 128  # 0x80
-    else:  # Right turn (apply_torque < 0)
+    else:  # Right turn (lca_steer < 0)
       lca_turn_bits = 255  # 0xFF
   else:
     lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
 
-  # Determine LCA_STATE_COUNTER based on LCA_TURN_BITS
-  # Rule: Frozen at 0 when inactive (186), rolling 0-15 when active (128 or 255)
-  # Manage counter locally when either openpilot or stock Pilot Assist is engaged
-  if lat_active or stock_lca_engaged:
-    if lca_turn_bits == 186:  # Inactive state
-      lca_state_counter_value = 0  # Frozen at 0
-    else:  # Active states (128 or 255)
-      lca_state_counter_value = lca_state_counter  # Rolling counter 0-15
-  else:
-    lca_state_counter_value = msg_lca_5['LCA_STATE_COUNTER']
-
-  # Determine LCA_STEER_LEVEL: scale apply_torque (-127 to 127) to stock range (-7 to +8)
+  # Determine LCA_5_STEER value (signed int8: -128 to 127)
+  # Hybrid approach: use calculated value when active, pass through stock when not active
   if lat_active:
-    lca_steer_level = lca_steer_level
+    lca_5_steer = lca_steer  # Already signed int8
   else:
-    lca_steer_level = msg_lca_5['LCA_STEER_LEVEL']
+    lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
 
   # Build values dictionary
   values = {
@@ -280,8 +267,7 @@ def create_lca_5_message(packer, lat_active: bool, lca_steer: int, lca_steer_lev
     'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
     'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
     'LCA_TURN_BITS': lca_turn_bits,
-    'LCA_STATE_COUNTER': lca_state_counter_value,
-    'LCA_STEER_LEVEL': lca_steer_level,
+    'LCA_5_STEER': lca_5_steer,
   }
 
   # Build bytes for checksum calculation

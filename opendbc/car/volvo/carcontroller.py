@@ -5,7 +5,6 @@ from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
-from opendbc.car.volvo.lca_commands import LCACommandsTorqueBased
 
 
 class CarController(CarControllerBase):
@@ -29,9 +28,7 @@ class CarController(CarControllerBase):
 
     # Counter management for LCA_5 (formerly SPEED_1)
     self.lca_5_counter = None  # Will grab initial value from CarState
-    self.lca_5_state_counter = 0  # State-dependent rolling counter (0-15)
 
-    self.lca_commands = LCACommandsTorqueBased()
     self.last_lat_active = False  # Track state
 
   def update(self, CC, CS, now_nanos):
@@ -57,13 +54,10 @@ class CarController(CarControllerBase):
       if not CC.latActive:
         apply_torque = 0
         lca_steer = 0
-        lca_steer_level = 0
       else:
-        # Calculate commands
-        lca_steer, lca_steer_level = self.lca_commands.update(
-            apply_torque,
-            dt=0.01  # Your loop period
-        )
+        # Calculate LCA_5_STEER (signed int8: -128 to 127)
+        # Scale normalized torque to signed byte range
+        lca_steer = int(round(apply_torque * 127.0))  # Maps [-1.0, 1.0] to [-127, 127]
 
       # Apply driver torque limits
       # apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last,
@@ -127,7 +121,7 @@ class CarController(CarControllerBase):
       pass
 
     # LCA_5 (formerly SPEED_1) - 0x67 - 50 Hz
-    # Contains wheel speeds + LCA signals (LCA_TURN_BITS, LCA_STATE_WITH_COUNTER, LCA_STEER_LEVEL)
+    # Contains wheel speeds + LCA signals (LCA_TURN_BITS, LCA_5_STEER)
     if self.frame % 2 == 0: # 50 Hz
       # Initialize counter from CarState on first run
       if self.lca_5_counter is None:
@@ -136,18 +130,9 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      # Increment state-dependent rolling counter when openpilot or stock Pilot Assist is engaged
-      # (frozen at 0 when inactive, rolls 0-15 when active based on LCA_TURN_BITS in volvocan.py)
-      #lca_5_pilot_assist_engaged = CS.pilot_assist_engaged
-      lca_5_pilot_assist_engaged = False
-      if CC.latActive or lca_5_pilot_assist_engaged:
-        self.lca_5_state_counter = (self.lca_5_state_counter + 1) % 16
-      else:
-        self.lca_5_state_counter = 0  # Reset when both are disengaged
-
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer, lca_steer_level,
-                                            CS.msg_lca_5, self.lca_5_counter, self.lca_5_state_counter,
-                                            CS.out.steeringAngleDeg, lca_5_pilot_assist_engaged))
+      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer,
+                                            CS.msg_lca_5, self.lca_5_counter,
+                                            CS.out.steeringAngleDeg))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active
