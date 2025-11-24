@@ -42,8 +42,9 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     #loosely_2 = 230
 
   if loosely_1_original != 0 or loosely_2_original != 0: # TODO Temporary
-    loosely_1 = loosely_1_original
-    loosely_2 = loosely_2_original
+    #loosely_1 = loosely_1_original
+    #loosely_2 = loosely_2_original
+    pass
 
   values = {
     'NEW_SIGNAL_3': 2,
@@ -440,7 +441,7 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_steer: i
     'BYTE_2': msg_lca_4['BYTE_2'],
     'BYTE_3': msg_lca_4['BYTE_3'],
     'BYTE_4': msg_lca_4['BYTE_4'],
-    'BYTE_5': msg_lca_4['BYTE_5'],
+    'BYTE_5': msg_lca_4['BYTE_5'], # TODO
     'BYTE_6': msg_lca_4['BYTE_6'],
     'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
     'BYTE_7_NIBBLE_HI': msg_lca_4['BYTE_7_NIBBLE_HI'],
