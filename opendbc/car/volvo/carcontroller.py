@@ -55,6 +55,7 @@ class CarController(CarControllerBase):
       if not CC.latActive:
         apply_torque = 0
         lca_steer = 0
+        lca_5_steer = 0
       else:
         # Calculate LCA_5_STEER (signed int8: -128 to 127)
         # Scale normalized torque to signed byte range
