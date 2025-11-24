@@ -46,6 +46,17 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     #loosely_2 = loosely_2_original
     pass
 
+  # LCA_STEER encoding depends on direction (similar to LCA_5_STEER):
+  # - Left turn (apply_torque > 0): zero point is 0, use absolute value
+  # - Right turn (apply_torque < 0): zero point is 255, use 255 - abs(value)
+  if lat_active:
+    if apply_torque < 0:  # Right turn
+      lca_steer_value = 255 - abs(apply_torque)
+    else:  # Left turn or neutral
+      lca_steer_value = abs(apply_torque)
+  else:
+    lca_steer_value = 0
+
   values = {
     'NEW_SIGNAL_3': 2,
     'LCA_ENABLE_INV': 0 if lat_active else 1,
@@ -58,7 +69,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     'NEW_SIGNAL_4': 39 if lat_active else 251, # Stock LCA increased from 35 to 39 steppedly when steering request was overriden by openpilot that couldn't steer enough
     'CURVE_RIGHT': curve_right,
     'NEW_SIGNAL_5': 3,
-    'LCA_STEER': abs(apply_torque) if lat_active else 0,
+    'LCA_STEER': lca_steer_value,
     'NEW_SIGNAL_6': 1, #15, # ?
   }
 
@@ -262,10 +273,16 @@ def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: di
   else:
     lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
 
-  # Determine LCA_5_STEER value (signed int8: -128 to 127) CORRECTION Unsigned
+  # Determine LCA_5_STEER value (unsigned int8: 0 to 255)
+  # Zero point depends on LCA_TURN_BITS:
+  #   - Left turn (LCA_TURN_BITS=128): zero point is 0
+  #   - Right turn (LCA_TURN_BITS=255): zero point is 255
   # Hybrid approach: use calculated value when active, pass through stock when not active
   if lat_active:
-    lca_5_steer = abs(lca_steer)
+    if lca_steer < 0:  # Right turn
+      lca_5_steer = 255 - abs(lca_steer)
+    else:  # Left turn or neutral
+      lca_5_steer = abs(lca_steer)
   else:
     lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
 
