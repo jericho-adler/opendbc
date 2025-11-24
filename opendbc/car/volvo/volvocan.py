@@ -238,7 +238,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: dict, counter: int, current_steering_wheel_angle: float):
+def create_lca_5_message(packer, lat_active: bool, lca_steer: int, lca_5_steer: int, msg_lca_5: dict, counter: int, current_steering_wheel_angle: float):
   """
   Create LCA_5 message (0x67, formerly SPEED_1) with LCA-related signals for lateral control.
 
@@ -265,7 +265,7 @@ def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: di
   # Determine LCA_5_STEER value (signed int8: -128 to 127)
   # Hybrid approach: use calculated value when active, pass through stock when not active
   if lat_active:
-    lca_5_steer = lca_steer  # Already signed int8
+    lca_5_steer = lca_5_steer  # Already signed int8
   else:
     lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
 

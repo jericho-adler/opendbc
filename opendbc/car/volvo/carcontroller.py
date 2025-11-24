@@ -59,6 +59,7 @@ class CarController(CarControllerBase):
         # Calculate LCA_5_STEER (signed int8: -128 to 127)
         # Scale normalized torque to signed byte range
         lca_steer = int(round(apply_torque * 127.0))  # Maps [-1.0, 1.0] to [-127, 127]
+        lca_5_steer = int(round(abs(apply_torque) * 255.0))  # Maps [0, 1.0] to [0, 255]
 
       # Apply driver torque limits
       # apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last,
@@ -131,7 +132,7 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer,
+      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer, lca_5_steer,
                                             CS.msg_lca_5, self.lca_5_counter,
                                             CS.out.steeringAngleDeg))
 
