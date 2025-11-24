@@ -30,6 +30,9 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   loosely_1 = baseline_loosely_1
   loosely_2 = baseline_loosely_2
 
+  loosely_1_original = msg_lca['LCA_STEER_LOOSELY_1']
+  loosely_2_original = msg_lca['LCA_STEER_LOOSELY_2']
+
   curve_right = 0
   if lca_steer < 0:
     curve_right = 63
@@ -37,6 +40,10 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     curve_right = 0
     #loosely_1 = 152
     #loosely_2 = 230
+
+  if loosely_1_original != 0 or loosely_2_original != 0: # TODO Temporary
+    loosely_1 = loosely_1_original
+    loosely_2 = loosely_2_original
 
   values = {
     'NEW_SIGNAL_3': 2,
@@ -51,7 +58,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     'CURVE_RIGHT': curve_right,
     'NEW_SIGNAL_5': 3,
     'LCA_STEER': apply_torque if lat_active else 0,
-    'NEW_SIGNAL_6': 15, # ?
+    'NEW_SIGNAL_6': 1, #15, # ?
   }
 
   """if not lat_active:
