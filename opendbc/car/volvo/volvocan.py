@@ -111,6 +111,7 @@ def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3:
       signal_9 = 255
     elif apply_torque < 0: # Right turn
       signal_9 = 0
+  signal_9 = msg_lca_3['NEW_SIGNAL_9'] # TODO: Remove
   values = {
     'NEW_SIGNAL_3': 0 if lat_active else msg_lca_3['NEW_SIGNAL_3'],
     'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_lca_3['LCA_ACCEPT_COMMANDS_RELATED'],
