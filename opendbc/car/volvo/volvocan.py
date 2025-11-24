@@ -35,6 +35,8 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     curve_right = 63
   elif lca_steer > 0:
     curve_right = 0
+    #loosely_1 = 152
+    #loosely_2 = 230
 
   values = {
     'NEW_SIGNAL_3': 2,
