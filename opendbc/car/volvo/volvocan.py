@@ -58,7 +58,7 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
     'NEW_SIGNAL_4': 39 if lat_active else 251, # Stock LCA increased from 35 to 39 steppedly when steering request was overriden by openpilot that couldn't steer enough
     'CURVE_RIGHT': curve_right,
     'NEW_SIGNAL_5': 3,
-    'LCA_STEER': apply_torque if lat_active else 0,
+    'LCA_STEER': abs(apply_torque) if lat_active else 0,
     'NEW_SIGNAL_6': 1, #15, # ?
   }
 
@@ -262,10 +262,10 @@ def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: di
   else:
     lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
 
-  # Determine LCA_5_STEER value (signed int8: -128 to 127)
+  # Determine LCA_5_STEER value (signed int8: -128 to 127) CORRECTION Unsigned
   # Hybrid approach: use calculated value when active, pass through stock when not active
   if lat_active:
-    lca_5_steer = lca_steer  # Already signed int8
+    lca_5_steer = abs(lca_steer)
   else:
     lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
 

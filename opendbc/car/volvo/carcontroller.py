@@ -58,7 +58,8 @@ class CarController(CarControllerBase):
       else:
         # Calculate LCA_5_STEER (signed int8: -128 to 127)
         # Scale normalized torque to signed byte range
-        lca_steer = int(round(apply_torque * 127.0))  # Maps [-1.0, 1.0] to [-127, 127]
+        #lca_steer = int(round(apply_torque * 127.0))  # Maps [-1.0, 1.0] to [-127, 127]
+        lca_steer = int(round(apply_torque * 255.0)) # Maps [-1.0, 1.0] to [-255, 255]
 
       # Apply driver torque limits
       # apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last,
