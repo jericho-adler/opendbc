@@ -24,11 +24,11 @@ class CarControllerParams:
   # LCA_5 two-byte torque encoding limits
   # Left turn range (positive torque)
   LCA_TURN_LEFT_MIN = 128      # Zero point for left turns
-  LCA_TURN_LEFT_MAX = 134      # Maximum observed for left (easily adjustable)
+  LCA_TURN_LEFT_MAX = 161      #134      # Maximum observed for left (easily adjustable)
 
   # Right turn range (negative torque) - symmetric to left
   LCA_TURN_RIGHT_MAX = 255     # Zero point for right turns
-  LCA_TURN_RIGHT_MIN = 249     # Symmetric: 255 - (134-128) = 249
+  LCA_TURN_RIGHT_MIN = 222     #249     # Symmetric: 255 - (134-128) = 249
 
   # Inactive/neutral value
   LCA_TURN_INACTIVE = 186      # 0xBA - neutral position
