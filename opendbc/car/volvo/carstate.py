@@ -66,7 +66,7 @@ class CarState(CarStateBase):
     self.eps_active = True  # Assume EPS is active for now
 
     # cruise - double-tap detection (on-off-on within 500ms/50 frames / 1000ms/100 frames)
-    cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1
+    cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1 or cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED_IDLE_TRAFFIC"] == 1
 
     # Check if double-tap cruise feature is enabled (bit 6 of alternativeExperience)
     use_double_tap = bool(self.CP.alternativeExperience & 64)
