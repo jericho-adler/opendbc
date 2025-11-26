@@ -55,11 +55,22 @@ class CarController(CarControllerBase):
       if not CC.latActive:
         apply_torque = 0
         lca_steer = 0
+        lca_torque_16bit = 0
       else:
-        # Calculate LCA_5_STEER (signed int8: -128 to 127)
-        # Scale normalized torque to signed byte range
-        #lca_steer = int(round(apply_torque * 127.0))  # Maps [-1.0, 1.0] to [-127, 127]
-        lca_steer = int(round(apply_torque * 255.0)) # Maps [-1.0, 1.0] to [-255, 255]
+        # Calculate LCA_STEER for LCA message (0x58) - single byte encoding
+        lca_steer = int(round(apply_torque * 255.0))  # Maps [-1.0, 1.0] to [-255, 255]
+
+        # Calculate LCA_TORQUE for LCA_5 message (0x67) - two byte encoding
+        # OLD APPROACH (limited to ±255):
+        # lca_steer = int(round(apply_torque * 255.0))  # Used same value for both LCA and LCA_5
+
+        # NEW APPROACH (full ±1791 range):
+        # Scale to full 16-bit range: [-1.0, +1.0] → [-1791, +1791]
+        lca_torque_16bit = int(round(apply_torque * CarControllerParams.LCA_TORQUE_MAX))
+
+        # Clamp to safe limits (defensive, helper function also clamps)
+        lca_torque_16bit = max(CarControllerParams.LCA_TORQUE_MIN,
+                                min(CarControllerParams.LCA_TORQUE_MAX, lca_torque_16bit))
 
       # Apply driver torque limits
       # apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last,
@@ -132,7 +143,7 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer,
+      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_torque_16bit,
                                             CS.msg_lca_5, self.lca_5_counter,
                                             CS.out.steeringAngleDeg))
 

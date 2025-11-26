@@ -2,6 +2,125 @@ import random
 from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message, checksum_lca_5_message
 from opendbc.car.carlog import carlog
 
+
+def torque_to_lca5_bytes(torque_16bit: int) -> tuple[int, int]:
+  """
+  Convert 16-bit signed torque value to LCA_5 message bytes.
+
+  Encoding scheme discovered from stock Volvo CMA system:
+  - Left (positive): LCA_TURN_BITS increments from 128, STEER counts 0-255
+  - Right (negative): LCA_TURN_BITS decrements from 255, STEER counts 255-0
+  - Neutral: LCA_TURN_BITS=186 (0xBA), STEER=0
+
+  Args:
+    torque_16bit: Signed torque value (-1791 to +1791)
+
+  Returns:
+    Tuple of (lca_turn_bits, lca_5_steer) both 0-255
+
+  Examples:
+    torque_to_lca5_bytes(0)    → (186, 0)   # Neutral
+    torque_to_lca5_bytes(255)  → (128, 255) # Small left
+    torque_to_lca5_bytes(256)  → (129, 0)   # Transition
+    torque_to_lca5_bytes(1791) → (134, 255) # Max left
+    torque_to_lca5_bytes(-255) → (255, 0)   # Small right
+    torque_to_lca5_bytes(-256) → (254, 255) # Transition
+    torque_to_lca5_bytes(-1791)→ (249, 0)   # Max right
+  """
+  from opendbc.car.volvo.values import CarControllerParams as CCP
+
+  # Clamp to safe limits
+  torque_16bit = max(CCP.LCA_TORQUE_MIN, min(CCP.LCA_TORQUE_MAX, torque_16bit))
+
+  if torque_16bit == 0:
+    # Neutral/inactive
+    return (CCP.LCA_TURN_INACTIVE, 0)
+
+  elif torque_16bit > 0:
+    # Left turn (positive torque)
+    # Formula: torque = (LCA_TURN_BITS - 128) × 256 + STEER
+    # Solve for LCA_TURN_BITS and STEER:
+    high_byte = torque_16bit // 256  # How many full 256-step increments
+    low_byte = torque_16bit % 256     # Remainder within current 256 range
+
+    lca_turn_bits = CCP.LCA_TURN_LEFT_MIN + high_byte
+    lca_5_steer = low_byte
+
+    # Clamp to maximum
+    if lca_turn_bits > CCP.LCA_TURN_LEFT_MAX:
+      lca_turn_bits = CCP.LCA_TURN_LEFT_MAX
+      lca_5_steer = 255
+
+    return (lca_turn_bits, lca_5_steer)
+
+  else:
+    # Right turn (negative torque)
+    # Formula: torque = -(255 - LCA_TURN_BITS) × 256 - (255 - STEER)
+    # Working with absolute value for clarity
+    abs_torque = abs(torque_16bit)
+
+    high_byte = abs_torque // 256
+    low_byte = abs_torque % 256
+
+    # For right turn: LCA_TURN_BITS decrements from 255
+    lca_turn_bits = CCP.LCA_TURN_RIGHT_MAX - high_byte
+    # STEER counts down from 255
+    lca_5_steer = 255 - low_byte
+
+    # Clamp to minimum
+    if lca_turn_bits < CCP.LCA_TURN_RIGHT_MIN:
+      lca_turn_bits = CCP.LCA_TURN_RIGHT_MIN
+      lca_5_steer = 0
+
+    return (lca_turn_bits, lca_5_steer)
+
+
+def lca5_bytes_to_torque(lca_turn_bits: int, lca_5_steer: int) -> int:
+  """
+  Convert LCA_5 message bytes back to 16-bit signed torque value.
+
+  This is the inverse of torque_to_lca5_bytes() and useful for:
+  - Testing/validation
+  - Debugging
+  - Reading stock LCA commands
+
+  Args:
+    lca_turn_bits: LCA_TURN_BITS value (0-255)
+    lca_5_steer: LCA_5_STEER value (0-255)
+
+  Returns:
+    Signed torque value (-1791 to +1791)
+
+  Examples:
+    lca5_bytes_to_torque(186, 0)   → 0     # Neutral
+    lca5_bytes_to_torque(128, 255) → 255   # Small left
+    lca5_bytes_to_torque(129, 0)   → 256   # Transition
+    lca5_bytes_to_torque(134, 255) → 1791  # Max left
+    lca5_bytes_to_torque(255, 0)   → -255  # Small right
+    lca5_bytes_to_torque(254, 255) → -256  # Transition
+    lca5_bytes_to_torque(249, 0)   → -1791 # Max right
+  """
+  from opendbc.car.volvo.values import CarControllerParams as CCP
+
+  # Check for neutral/inactive
+  if lca_turn_bits == CCP.LCA_TURN_INACTIVE:
+    return 0
+
+  # Check if left turn range
+  if CCP.LCA_TURN_LEFT_MIN <= lca_turn_bits <= CCP.LCA_TURN_LEFT_MAX:
+    # Left turn: torque = (LCA_TURN_BITS - 128) × 256 + STEER
+    return (lca_turn_bits - CCP.LCA_TURN_LEFT_MIN) * 256 + lca_5_steer
+
+  # Check if right turn range
+  elif CCP.LCA_TURN_RIGHT_MIN <= lca_turn_bits <= CCP.LCA_TURN_RIGHT_MAX:
+    # Right turn: torque = -(255 - LCA_TURN_BITS) × 256 - (255 - STEER)
+    return -((CCP.LCA_TURN_RIGHT_MAX - lca_turn_bits) * 256 + (255 - lca_5_steer))
+
+  else:
+    # Unknown/invalid range - treat as neutral
+    return 0
+
+
 def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
   """
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
@@ -249,41 +368,59 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: dict, counter: int, current_steering_wheel_angle: float):
+def create_lca_5_message(packer, lat_active: bool, lca_torque_16bit: int, msg_lca_5: dict, counter: int, current_steering_wheel_angle: float):
   """
-  Create LCA_5 message (0x67, formerly SPEED_1) with LCA-related signals for lateral control.
+  Create LCA_5 message (0x67) with proper 16-bit torque encoding.
+
+  Encoding scheme:
+  - Left turns: LCA_TURN_BITS increments from 128, STEER 0-255
+  - Right turns: LCA_TURN_BITS decrements from 255, STEER 255-0
+  - Neutral: LCA_TURN_BITS=186, STEER=0
 
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    lca_steer: LCA_5_STEER value (signed int8: -128 to 127)
-    msg_lca_5: Dictionary containing LCA_5 message values from car
-    counter: Counter value (0-15, increments by 1)
+    lca_torque_16bit: 16-bit signed torque (-1791 to +1791)
+    msg_lca_5: Stock LCA_5 values from car
+    counter: Counter value (0-15, increments by 4)
     current_steering_wheel_angle: Current steering wheel angle in degrees
-  """
-  # Determine LCA_TURN_BITS based on lca_steer
-  # Based on discovered behavior: 0xBA (186) inactive, 0x80 (128) left/mode1, 0xFF (255) right/mode2
-  if lat_active:
-    if lca_steer == 0:  # Straight/neutral/inactive
-      lca_turn_bits = 186  # 0xBA
-    elif lca_steer > 0:  # Left turn
-      lca_turn_bits = 128  # 0x80
-    else:  # Right turn (lca_steer < 0)
-      lca_turn_bits = 255  # 0xFF
-  else:
-    lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
 
-  # Determine LCA_5_STEER value (unsigned int8: 0 to 255)
-  # Zero point depends on LCA_TURN_BITS:
-  #   - Left turn (LCA_TURN_BITS=128): zero point is 0
-  #   - Right turn (LCA_TURN_BITS=255): zero point is 255
-  # Hybrid approach: use calculated value when active, pass through stock when not active
+  Returns:
+    CAN message for LCA_5 on bus 2
+  """
+  # OLD APPROACH (single-byte encoding, limited to ±255):
+  # # Determine LCA_TURN_BITS based on lca_steer
+  # # Based on discovered behavior: 0xBA (186) inactive, 0x80 (128) left/mode1, 0xFF (255) right/mode2
+  # if lat_active:
+  #   if lca_steer == 0:  # Straight/neutral/inactive
+  #     lca_turn_bits = 186  # 0xBA
+  #   elif lca_steer > 0:  # Left turn
+  #     lca_turn_bits = 128  # 0x80
+  #   else:  # Right turn (lca_steer < 0)
+  #     lca_turn_bits = 255  # 0xFF
+  # else:
+  #   lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
+  #
+  # # Determine LCA_5_STEER value (unsigned int8: 0 to 255)
+  # # Zero point depends on LCA_TURN_BITS:
+  # #   - Left turn (LCA_TURN_BITS=128): zero point is 0
+  # #   - Right turn (LCA_TURN_BITS=255): zero point is 255
+  # # Hybrid approach: use calculated value when active, pass through stock when not active
+  # if lat_active:
+  #   if lca_steer < 0:  # Right turn
+  #     lca_5_steer = 255 - abs(lca_steer)
+  #   else:  # Left turn or neutral
+  #     lca_5_steer = abs(lca_steer)
+  # else:
+  #   lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
+
+  # NEW APPROACH (two-byte encoding, full ±1791 range):
+  # Convert 16-bit torque to LCA_5 two-byte encoding
   if lat_active:
-    if lca_steer < 0:  # Right turn
-      lca_5_steer = 255 - abs(lca_steer)
-    else:  # Left turn or neutral
-      lca_5_steer = abs(lca_steer)
+    lca_turn_bits, lca_5_steer = torque_to_lca5_bytes(lca_torque_16bit)
   else:
+    # When not active, pass through stock values
+    lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
     lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
 
   # Build values dictionary

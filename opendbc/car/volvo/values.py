@@ -21,6 +21,24 @@ class CarControllerParams:
   STEER_DRIVER_FACTOR = 1              # From DBC
   STEER_ERROR_MAX = 100                # Max delta between torque cmd and torque motor
 
+  # LCA_5 two-byte torque encoding limits
+  # Left turn range (positive torque)
+  LCA_TURN_LEFT_MIN = 128      # Zero point for left turns
+  LCA_TURN_LEFT_MAX = 134      # Maximum observed for left (easily adjustable)
+
+  # Right turn range (negative torque) - symmetric to left
+  LCA_TURN_RIGHT_MAX = 255     # Zero point for right turns
+  LCA_TURN_RIGHT_MIN = 249     # Symmetric: 255 - (134-128) = 249
+
+  # Inactive/neutral value
+  LCA_TURN_INACTIVE = 186      # 0xBA - neutral position
+
+  # Calculated max torque values (auto-updates when limits change)
+  # Left max: (134 - 128) × 256 + 255 = 1791
+  LCA_TORQUE_MAX = (LCA_TURN_LEFT_MAX - LCA_TURN_LEFT_MIN) * 256 + 255
+  # Right max: -(255 - 249) × 256 - (255 - 0) = -1791
+  LCA_TORQUE_MIN = -((LCA_TURN_RIGHT_MAX - LCA_TURN_RIGHT_MIN) * 256 + 255)
+
   # Keep angle limits for reference (not used in torque mode)
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(
     390, # deg
