@@ -4,6 +4,7 @@ from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
+from opendbc.car.volvo.live_testing import LiveTestingManager
 from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
@@ -13,6 +14,10 @@ class CarController(CarControllerBase):
     super().__init__(dbc_names, CP)
     self.packer = CANPacker(dbc_names[Bus.party])
     self.apply_angle_last = 0.0  # Track last applied steering angle
+
+    # Live testing configuration manager
+    self.live_testing = LiveTestingManager()
+    self.liveTestingConfig = None  # Updated at 50 Hz, persists between frames
 
     self.gear_acc = 60
     self.lca_4_acc = 0  # Bresenham accumulator for 29 Hz
@@ -42,8 +47,12 @@ class CarController(CarControllerBase):
       #self.lca_commands.reset()  # Clear state ← IMPORTANT!
       pass
 
-    lat_active = CC.latActive
-    lat_active = True
+    # Explicit if condition for lat_active override (uses config loaded at 50 Hz)
+    if self.liveTestingConfig:
+      lat_active = self.liveTestingConfig.get('lat_active', CC.latActive)
+    else:
+      lat_active = CC.latActive
+    #lat_active = True
 
     # lateral control - angle-based steering
     # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
@@ -65,6 +74,14 @@ class CarController(CarControllerBase):
         # Scale angle (±600° range) to ±255 range for LCA message
         lca_steer = int(round(apply_angle * 255.0 / 600.0))
         lca_steer = max(-255, min(255, lca_steer))
+
+      # Apply lca_steer override if present in live testing config (loaded at 50 Hz)
+      if self.liveTestingConfig:
+        lca_steer_override = self.liveTestingConfig.get('lca_steer')
+        if lca_steer_override is not None:
+          lca_steer = lca_steer_override
+      else:
+        lca_steer_override = None
 
       # LCA - 0x58 - 100 Hz (keep with torque-style encoding)
       can_sends.append(create_lca_steering(self.packer, lat_active, lca_steer, CS.msg_lca))
@@ -126,6 +143,11 @@ class CarController(CarControllerBase):
     # LCA_5 (formerly SPEED_1) - 0x67 - 50 Hz
     # Contains wheel speeds + LCA signals (LCA_TURN_BITS, LCA_5_STEER)
     if self.frame % 2 == 0: # 50 Hz
+      # === LIVE TESTING: Load config at 50 Hz (matches LCA_5 message frequency) ===
+      # Returns None if file doesn't exist or lat_active=False in file
+      # Config persists between frames for use by other messages
+      self.liveTestingConfig = self.live_testing.load_config()
+
       # Initialize counter from CarState on first run
       if self.lca_5_counter is None:
         self.lca_5_counter = CS.msg_lca_5['COUNTER']
@@ -133,8 +155,17 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
+      # Extract override parameters using explicit if conditions
+      if self.liveTestingConfig:
+        override_turn_bits = self.liveTestingConfig.get('lca_turn_bits')
+        override_steer = self.liveTestingConfig.get('lca_5_steer')
+      else:
+        override_turn_bits = None
+        override_steer = None
+
       can_sends.append(create_lca_5_message(self.packer, lat_active, apply_angle,
-                                            CS.msg_lca_5, self.lca_5_counter))
+                                            CS.msg_lca_5, self.lca_5_counter,
+                                            override_turn_bits, override_steer))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active

@@ -1,0 +1,4 @@
+lat_active=True
+lca_turn_bits=128
+lca_5_steer=255
+lca_steer=100

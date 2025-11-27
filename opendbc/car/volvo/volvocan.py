@@ -369,7 +369,8 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_lca_5: dict, counter: int):
+def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_lca_5: dict, counter: int,
+                         override_turn_bits: int | None = None, override_steer: int | None = None):
   """
   Create LCA_5 message (0x67) with angle-based steering control.
 
@@ -379,6 +380,8 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     target_angle_deg: Target steering angle in degrees (positive = left, negative = right)
     msg_lca_5: Stock LCA_5 values from car
     counter: Counter value (0-15, increments by 4)
+    override_turn_bits: Optional override for LCA_TURN_BITS (0-255), from live testing config
+    override_steer: Optional override for LCA_5_STEER (0-255), from live testing config
 
   Returns:
     CAN message for LCA_5 on bus 2
@@ -391,6 +394,11 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
   else:
     # When not active, use inactive encoding
     lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
+
+  # Apply overrides from live testing config (only if both are provided)
+  if override_turn_bits is not None and override_steer is not None:
+    lca_turn_bits = override_turn_bits
+    lca_5_steer = override_steer
 
   # Build values dictionary (wheel speeds and counter unchanged)
   values = {
