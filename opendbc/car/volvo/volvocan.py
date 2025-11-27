@@ -385,12 +385,12 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
   """
   # Use angle encoder to convert target angle to LCA_5 bytes
   if lat_active:
-    lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode(target_angle_deg)
-  else:
-    # When not active, use inactive encoding
-    #lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
+    #lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode(target_angle_deg)
     lca_turn_bits = 128
     lca_5_steer = 50
+  else:
+    # When not active, use inactive encoding
+    lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
 
   # Build values dictionary (wheel speeds and counter unchanged)
   values = {

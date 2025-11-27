@@ -42,6 +42,8 @@ class CarController(CarControllerBase):
       #self.lca_commands.reset()  # Clear state ← IMPORTANT!
       pass
 
+    CC.latActive = True
+
     # lateral control - angle-based steering
     # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
     # Stock LCA is permanently blocked by panda safety, so we must always send
