@@ -3,6 +3,7 @@ from opendbc.car import Bus
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
+from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
@@ -11,7 +12,7 @@ class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
     self.packer = CANPacker(dbc_names[Bus.party])
-    self.apply_torque_last = 0
+    self.apply_angle_last = 0.0  # Track last applied steering angle
 
     self.gear_acc = 60
     self.lca_4_acc = 0  # Bresenham accumulator for 29 Hz
@@ -41,44 +42,30 @@ class CarController(CarControllerBase):
       #self.lca_commands.reset()  # Clear state ← IMPORTANT!
       pass
 
-    # lateral control - torque-based steering
+    # lateral control - angle-based steering
     # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
     # Stock LCA is permanently blocked by panda safety, so we must always send
-    if self.frame % CarControllerParams.STEER_STEP == 0: # 100 Hz
-      # Convert normalized torque to raw torque value
-      #apply_torque = int(round(actuators.torque * CarControllerParams.STEER_MAX))
+    if self.frame % CarControllerParams.STEER_STEP == 0:  # 100 Hz
+      # Get desired steering angle from controlsd (LatControlAngle)
+      apply_angle = actuators.steeringAngleDeg  # degrees
 
-      # Your apply_torque: +1.0 = left, -1.0 = right
-      apply_torque = actuators.torque  # Already normalized [-1.0, +1.0]
-
-      # Disable torque when not active
       if not CC.latActive:
-        apply_torque = 0
+        apply_angle = CS.out.steeringAngleDeg  # Use current angle when inactive
         lca_steer = 0
-        lca_torque_16bit = 0
       else:
-        # Calculate LCA_STEER for LCA message (0x58) - single byte encoding
-        lca_steer = int(round(apply_torque * 255.0))  # Maps [-1.0, 1.0] to [-255, 255]
+        # No rate limiting initially - apply desired angle directly
+        # TODO: Add rate limiting after basic functionality is confirmed
 
-        # Calculate LCA_TORQUE for LCA_5 message (0x67) - two byte encoding
-        # OLD APPROACH (limited to ±255):
-        # lca_steer = int(round(apply_torque * 255.0))  # Used same value for both LCA and LCA_5
+        # Keep LCA (0x58) with torque-style encoding for now
+        # This is a simple approximation: convert angle to torque-like value
+        # Positive angle = left turn, negative angle = right turn
+        # Scale angle (±600° range) to ±255 range for LCA message
+        lca_steer = int(round(apply_angle * 255.0 / 600.0))
+        lca_steer = max(-255, min(255, lca_steer))
 
-        # NEW APPROACH (full ±1791 range):
-        # Scale to full 16-bit range: [-1.0, +1.0] → [-1791, +1791]
-        lca_torque_16bit = int(round(apply_torque * CarControllerParams.LCA_TORQUE_MAX))
-
-        # Clamp to safe limits (defensive, helper function also clamps)
-        lca_torque_16bit = max(CarControllerParams.LCA_TORQUE_MIN,
-                                min(CarControllerParams.LCA_TORQUE_MAX, lca_torque_16bit))
-
-      # Apply driver torque limits
-      # apply_torque = apply_driver_steer_torque_limits(apply_torque, self.apply_torque_last,
-      #                                                CS.out.steeringTorque, CarControllerParams)
-
-      # LCA - 0x58 - 100 Hz
+      # LCA - 0x58 - 100 Hz (keep with torque-style encoding)
       can_sends.append(create_lca_steering(self.packer, CC.latActive, lca_steer, CS.msg_lca))
-      self.apply_torque_last = apply_torque
+      self.apply_angle_last = apply_angle
 
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
       spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 128)
@@ -143,9 +130,8 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_torque_16bit,
-                                            CS.msg_lca_5, self.lca_5_counter,
-                                            CS.out.steeringAngleDeg))
+      can_sends.append(create_lca_5_message(self.packer, CC.latActive, apply_angle,
+                                            CS.msg_lca_5, self.lca_5_counter))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active
@@ -164,9 +150,7 @@ class CarController(CarControllerBase):
       pass
 
     new_actuators = actuators.as_builder()
-    #new_actuators.torque = self.apply_torque_last / CarControllerParams.STEER_MAX
-    new_actuators.torque = self.apply_torque_last
-    new_actuators.torqueOutputCan = self.apply_torque_last
+    new_actuators.steeringAngleDeg = self.apply_angle_last
     self.frame += 1
     self.last_lat_active = CC.latActive
     return new_actuators, can_sends

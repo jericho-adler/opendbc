@@ -1,5 +1,6 @@
 import random
 from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message, checksum_lca_5_message
+from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.carlog import carlog
 
 
@@ -368,62 +369,28 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
   return packer.make_can_msg('LCA_2', 2, values)
 
-def create_lca_5_message(packer, lat_active: bool, lca_torque_16bit: int, msg_lca_5: dict, counter: int, current_steering_wheel_angle: float):
+def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_lca_5: dict, counter: int):
   """
-  Create LCA_5 message (0x67) with proper 16-bit torque encoding.
-
-  Encoding scheme:
-  - Left turns: LCA_TURN_BITS increments from 128, STEER 0-255
-  - Right turns: LCA_TURN_BITS decrements from 255, STEER 255-0
-  - Neutral: LCA_TURN_BITS=186, STEER=0
+  Create LCA_5 message (0x67) with angle-based steering control.
 
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    lca_torque_16bit: 16-bit signed torque (-1791 to +1791)
+    target_angle_deg: Target steering angle in degrees (positive = left, negative = right)
     msg_lca_5: Stock LCA_5 values from car
     counter: Counter value (0-15, increments by 4)
-    current_steering_wheel_angle: Current steering wheel angle in degrees
 
   Returns:
     CAN message for LCA_5 on bus 2
   """
-  # OLD APPROACH (single-byte encoding, limited to ±255):
-  # # Determine LCA_TURN_BITS based on lca_steer
-  # # Based on discovered behavior: 0xBA (186) inactive, 0x80 (128) left/mode1, 0xFF (255) right/mode2
-  # if lat_active:
-  #   if lca_steer == 0:  # Straight/neutral/inactive
-  #     lca_turn_bits = 186  # 0xBA
-  #   elif lca_steer > 0:  # Left turn
-  #     lca_turn_bits = 128  # 0x80
-  #   else:  # Right turn (lca_steer < 0)
-  #     lca_turn_bits = 255  # 0xFF
-  # else:
-  #   lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
-  #
-  # # Determine LCA_5_STEER value (unsigned int8: 0 to 255)
-  # # Zero point depends on LCA_TURN_BITS:
-  # #   - Left turn (LCA_TURN_BITS=128): zero point is 0
-  # #   - Right turn (LCA_TURN_BITS=255): zero point is 255
-  # # Hybrid approach: use calculated value when active, pass through stock when not active
-  # if lat_active:
-  #   if lca_steer < 0:  # Right turn
-  #     lca_5_steer = 255 - abs(lca_steer)
-  #   else:  # Left turn or neutral
-  #     lca_5_steer = abs(lca_steer)
-  # else:
-  #   lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
-
-  # NEW APPROACH (two-byte encoding, full ±1791 range):
-  # Convert 16-bit torque to LCA_5 two-byte encoding
+  # Use angle encoder to convert target angle to LCA_5 bytes
   if lat_active:
-    lca_turn_bits, lca_5_steer = torque_to_lca5_bytes(lca_torque_16bit)
+    lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode(target_angle_deg)
   else:
-    # When not active, pass through stock values
-    lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
-    lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
+    # When not active, use inactive encoding
+    lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
 
-  # Build values dictionary
+  # Build values dictionary (wheel speeds and counter unchanged)
   values = {
     'WHEEL_SPEED_1': msg_lca_5['WHEEL_SPEED_1'],
     'NEW_SIGNAL_4': msg_lca_5['NEW_SIGNAL_4'],
@@ -431,13 +398,11 @@ def create_lca_5_message(packer, lat_active: bool, lca_torque_16bit: int, msg_lc
     'COUNTER': counter,
     'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
     'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
-    'LCA_TURN_BITS': lca_turn_bits,
-    'LCA_5_STEER': lca_5_steer,
+    'LCA_TURN_BITS': lca_turn_bits,  # Byte 6 - angle encoding
+    'LCA_5_STEER': lca_5_steer,      # Byte 7 - angle encoding
   }
 
-  # Build bytes for checksum calculation
-  # Message structure: byte0, byte1, byte2 (checksum), byte3, byte4, byte5, byte6, byte7
-  # We need: byte0, byte1, byte3, byte4, byte5 for checksum (bytes 6-7 contain LCA signals)
+  # Build bytes for checksum calculation (unchanged)
   def build_bytes(vals: dict) -> list[int]:
     # Byte 0: WHEEL_SPEED_1[6:0] (bits 6-0) + NEW_SIGNAL_4 (bit 7)
     byte0 = (int(vals['WHEEL_SPEED_1']) & 0x7F) | ((int(vals['NEW_SIGNAL_4']) & 0x01) << 7)
