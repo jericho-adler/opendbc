@@ -42,7 +42,8 @@ class CarController(CarControllerBase):
       #self.lca_commands.reset()  # Clear state ← IMPORTANT!
       pass
 
-    CC.latActive = True
+    lat_active = CC.latActive
+    lat_active = True
 
     # lateral control - angle-based steering
     # NOTE: LCA message is sent every frame (even when inactive) to replace stock LCA
@@ -66,14 +67,14 @@ class CarController(CarControllerBase):
         lca_steer = max(-255, min(255, lca_steer))
 
       # LCA - 0x58 - 100 Hz (keep with torque-style encoding)
-      can_sends.append(create_lca_steering(self.packer, CC.latActive, lca_steer, CS.msg_lca))
+      can_sends.append(create_lca_steering(self.packer, lat_active, lca_steer, CS.msg_lca))
       self.apply_angle_last = apply_angle
 
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
       spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 128)
       spoof_pa_hands = CS.pilot_assist_engaged and spoof_pa_hands_enabled
       # PSCM (bus 2 -> 0) - 0x16 - 100 Hz
-      can_sends.append(create_pscm_message(self.packer, CC.latActive, CS.msg_pscm, self.frame, spoof_pa_hands))
+      can_sends.append(create_pscm_message(self.packer, lat_active, CS.msg_pscm, self.frame, spoof_pa_hands))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 
@@ -85,7 +86,7 @@ class CarController(CarControllerBase):
       # Increment counter by +1, wrap from 14 → 0 (modulo 15)
       self.pscm_related_counter = (self.pscm_related_counter + 1) % 15
 
-      can_sends.append(create_pscm_related_message(self.packer, CC.latActive, CS.pilot_assist_engaged,
+      can_sends.append(create_pscm_related_message(self.packer, lat_active, CS.pilot_assist_engaged,
                                                      CS.msg_pscm_related, self.pscm_related_counter))
 
     # LCA_3 - 0x57 - avg 66.66 Hz
@@ -95,7 +96,7 @@ class CarController(CarControllerBase):
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       # Update counter with observed value, get counter to send
       counter, is_synced = self.lca_3_counter_sync.update(CS.msg_lca_3['COUNTER_1'])
-      can_sends.append(create_lca_3_message(self.packer, CC.latActive, lca_steer, CS.msg_lca_3, counter))
+      can_sends.append(create_lca_3_message(self.packer, lat_active, lca_steer, CS.msg_lca_3, counter))
       #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 
@@ -118,7 +119,7 @@ class CarController(CarControllerBase):
       self.lca_2_counter_1 = (self.lca_2_counter_1 + 2) % 16
       self.lca_2_counter_2 = (self.lca_2_counter_2 + 4) % 16
 
-      can_sends.append(create_lca_2_message(self.packer, CC.latActive, CS.msg_lca_2,
+      can_sends.append(create_lca_2_message(self.packer, lat_active, CS.msg_lca_2,
                                             self.lca_2_counter_1, self.lca_2_counter_2))
       pass
 
@@ -132,7 +133,7 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, apply_angle,
+      can_sends.append(create_lca_5_message(self.packer, lat_active, apply_angle,
                                             CS.msg_lca_5, self.lca_5_counter))
 
     # LCA_4 - 0x90 - 29 Hz
@@ -141,7 +142,7 @@ class CarController(CarControllerBase):
     self.lca_4_acc += 29
     if self.lca_4_acc >= 100:
       self.lca_4_acc -= 100
-      can_sends.append(create_lca_4_message(self.packer, CC.latActive, CS.msg_lca_4, lca_steer))
+      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, lca_steer))
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach
