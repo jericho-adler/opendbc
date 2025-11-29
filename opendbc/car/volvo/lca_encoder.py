@@ -1,97 +1,151 @@
 """
-TRULY CORRECTED LCA Target Angle Encoder
-==========================================
-Byte6=186 is NOT the active 0° command - it's a "no command" state!
+LCA Target Angle Encoder – Asymmetric Left/Right Model
+======================================================
 
-When LCA is active and commanding 0°, use:
-- byte6=128, byte7=0 (approaching from LEFT or staying at 0)
-- byte6=255, byte7~255 (approaching from RIGHT)
+Assumptions from empirical tests and desired behavior:
 
-Encoding (when LCA ACTIVE):
-- LEFT (angle > 0): byte6=128, PSCM = 1.731 * byte7 + 2.2
-- RIGHT (angle < 0): byte6=255, PSCM = 1.731 * byte7 - 442.1
-- NEUTRAL (angle = 0): byte6=128, byte7=0 (default to LEFT baseline)
+- SCALE is the same for both directions:
 
-Byte6=186, byte7=0 should ONLY be used when LCA is inactive/standby!
+    SCALE = 0.05596 degrees per count
+
+LEFT (angle > 0):
+-----------------
+- We use:
+    LCA_TURN_BITS (byte 6) = 128
+    LCA_5_STEER   (byte 7) = 0..255
+
+- Approximate mapping:
+    angle_deg ≈ SCALE * byte7
+    - So byte7 = round(angle_deg / SCALE)
+
+- Near 0°, we treat (128, 0) as the canonical "neutral" command.
+
+RIGHT (angle < 0, theoretical/ideal behavior):
+----------------------------------------------
+- At small right angles, zero point is:
+    byte6 = 255, byte7 = 255  -> angle ≈ 0°
+
+- Increasing right angle (more negative) should:
+    - Decrease byte7 from 255 → 254 → ... → 0
+    - Then wrap:
+        (byte6, byte7) = (255,   0)  -> next step ->
+        (byte6, byte7) = (254, 255)
+      and continue with byte6 decreasing as needed.
+
+- We model this as a simple "right counts" index:
+
+    right_counts = (255 - byte6) * 256 + (255 - byte7)   # 0 at (255,255)
+
+    angle_deg = - right_counts * SCALE
+
+SPECIAL:
+--------
+- (byte6, byte7) = (186, 0) is the "inactive / no command" state and
+  should NOT be used to request 0°; encode_inactive() returns this and
+  decode() returns None for it.
+
+- For |angle| < ~0.5°, encoder returns (128, 0) (neutral from LEFT).
 """
 
-SCALE = 1.731  # degrees per count (same for both directions)
+SCALE = 0.05596  # degrees per count (symmetric magnitude)
+
 
 class LCATargetAngleEncoder:
-    """Encode/decode target steering angles to LCA_5 bytes 6+7"""
+    """Encode/decode target steering angles to LCA_5 bytes 6+7."""
 
     @staticmethod
-    def encode(target_angle_deg):
+    def encode(target_angle_deg: float):
         """
-        Encode target steering angle to (byte6, byte7) for ACTIVE LCA
+        Encode target steering angle to (byte6, byte7) for ACTIVE LCA.
 
         Args:
-            target_angle_deg: Target angle in degrees
-                            Positive = LEFT, Negative = RIGHT, 0 = straight
+            target_angle_deg: Target angle in degrees.
+                              Positive = LEFT, Negative = RIGHT, 0 = straight.
 
         Returns:
-            (byte6, byte7): Tuple of bytes for LCA_5 message
-
-        Note:
-            For 0° or near-0° angles, defaults to byte6=128, byte7=0
-            This is the "neutral" command when LCA is ACTIVE
+            (byte6, byte7): Tuple of bytes for LCA_5 message.
         """
 
-        # For angles at or near 0°, use LEFT baseline (byte6=128, byte7=0)
+        # Deadband around 0°: use the LEFT neutral command
         if abs(target_angle_deg) < 0.5:
             return (128, 0)
 
-        # LEFT direction
-        elif target_angle_deg > 0:
-            # PSCM = 1.731 * byte7 + 2.2
-            # byte7 = (PSCM - 2.2) / 1.731
-            byte7 = int(round((target_angle_deg - 2.2) / SCALE))
-            byte7 = max(0, min(136, byte7))  # Clamp to observed range
-            return (128, byte7)
+        # LEFT: simple linear in byte7 with byte6 fixed at 128
+        if target_angle_deg > 0:
+            # angle_deg ≈ SCALE * byte7
+            byte7 = int(round(target_angle_deg / SCALE))
+            byte7 = max(0, min(255, byte7))
+            byte6 = 128
+            # Avoid inactive pattern accidentally
+            if byte6 == 186 and byte7 == 0:
+                byte7 = 1
+            return (byte6, byte7)
 
-        # RIGHT direction
-        else:
-            # PSCM = 1.731 * byte7 - 442.1
-            # byte7 = (PSCM + 442.1) / 1.731
-            byte7 = int(round((target_angle_deg + 442.1) / SCALE))
-            byte7 = max(150, min(255, byte7))  # Clamp to observed range
-            return (255, byte7)
+        # RIGHT: use right_counts with (255,255) as zero
+        # angle_deg = - right_counts * SCALE
+        # => right_counts = -angle_deg / SCALE
+        right_counts = int(round(-target_angle_deg / SCALE))
+        if right_counts < 0:
+            right_counts = 0
+        if right_counts > 0xFFFF:
+            right_counts = 0xFFFF
+
+        # Decompose right_counts into (byte6, byte7)
+        # right_counts = (255 - byte6) * 256 + (255 - byte7)
+        # Let k = 255 - byte6, r = 255 - byte7:
+        #   right_counts = k * 256 + r
+        k = right_counts // 256
+        r = right_counts % 256
+
+        byte6 = 255 - k
+        byte7 = 255 - r
+
+        # Avoid inactive pattern accidentally
+        if byte6 == 186 and byte7 == 0:
+            # Nudge one step further right
+            right_counts = min(right_counts + 1, 0xFFFF)
+            k = right_counts // 256
+            r = right_counts % 256
+            byte6 = 255 - k
+            byte7 = 255 - r
+
+        return (byte6, byte7)
 
     @staticmethod
     def encode_inactive():
         """
-        Return the byte values for when LCA is inactive/standby
+        Return the byte values for when LCA is inactive/standby.
 
         Returns:
-            (186, 0): The "no command" state
+            (186, 0): The "no command" state.
         """
         return (186, 0)
 
     @staticmethod
-    def decode(byte6, byte7):
+    def decode(byte6: int, byte7: int):
         """
-        Decode (byte6, byte7) to target steering angle
+        Decode (byte6, byte7) to target steering angle.
 
         Args:
-            byte6, byte7: LCA_5 message bytes
+            byte6, byte7: LCA_5 message bytes.
 
         Returns:
-            angle_deg: Target steering angle in degrees
-                      None if byte6=186 (inactive/no command state)
+            angle_deg: Target steering angle in degrees, or
+                       None if this is the inactive/no-command state.
         """
-        if byte6 == 186:
-            # This is the "inactive" or "no active command" state
-            # NOT a 0° command!
+        # Inactive / no command
+        if byte6 == 186 and byte7 == 0:
             return None
 
-        elif byte6 == 128:  # LEFT or NEUTRAL
-            # PSCM = 1.731 * byte7 + 2.2
-            return SCALE * byte7 + 2.2
+        # LEFT side: byte6 = 128 used for positive / neutral
+        if byte6 == 128:
+            return SCALE * byte7
 
-        elif byte6 == 255:  # RIGHT
-            # PSCM = 1.731 * byte7 - 442.1
-            return SCALE * byte7 - 442.1
+        # RIGHT side region: byte6 ≤ 255, byte6 likely near 255, 254, ...
+        # Use right_counts formula if we’re on that side.
+        if byte6 <= 255:
+            right_counts = (255 - byte6) * 256 + (255 - byte7)
+            return - right_counts * SCALE
 
-        else:
-            # Unknown byte6 value
-            return None
+        # Fallback: unknown pattern – treat as no valid angle
+        return None

@@ -65,7 +65,8 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
     if (msg->addr == VOLVO_BUS1_CRUISE_CONTROL) {
       // SG_ CRUISE_CONTROL_ENABLED : 56|1@0+ (1,0) [0|1] "" XXX
-      bool cruise_enabled = (msg->data[7] & 1U);
+      // SG_ CRUISE_CONTROL_ENABLED_IDLE_TRAFFIC : 57|1@0+ (1,0) [0|1] "" XXX
+      bool cruise_enabled = ((msg->data[7] & 1U) || (msg->data[7] & 2U));
       pcm_cruise_check(cruise_enabled);
     }
   }
