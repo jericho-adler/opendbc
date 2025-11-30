@@ -4,6 +4,7 @@ from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.live_testing import LiveTestingManager
 from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
+from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -34,6 +35,10 @@ class CarController(CarControllerBase):
     self.lca_5_counter = None  # Will grab initial value from CarState
 
     self.last_lat_active = False  # Track state
+
+    # LCA_4_CURVE_RIGHT hysteresis state (0 or 255)
+    # Threshold at 186: value sticks until crossing past 186 from opposite side
+    self.lca_4_curve_right = 0
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -154,8 +159,18 @@ class CarController(CarControllerBase):
     self.lca_4_acc += 29
     if self.lca_4_acc >= 100:
       self.lca_4_acc -= 100
+      # Compute LCA_TURN_BITS for hysteresis check
+      lca_turn_bits, _ = LCATargetAngleEncoder.encode(apply_angle) if lat_active else LCATargetAngleEncoder.encode_inactive()
+      # Hysteresis around threshold 186:
+      # - From left side (128→186): stays 0 until lca_turn_bits > 186
+      # - From right side (255→186): stays 255 until lca_turn_bits < 186
+      # At exactly 186, value sticks to whatever it was
+      if self.lca_4_curve_right == 0 and lca_turn_bits > 186:
+        self.lca_4_curve_right = 255
+      elif self.lca_4_curve_right == 255 and lca_turn_bits < 186:
+        self.lca_4_curve_right = 0
       lca_4_overrides = self.liveTestingConfig.get('lca_4') if self.liveTestingConfig else None
-      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, apply_angle, lca_4_overrides))
+      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, self.lca_4_curve_right, lca_4_overrides))
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach

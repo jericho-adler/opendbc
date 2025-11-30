@@ -414,7 +414,7 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
 
-def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle: float,
+def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_curve_right: int,
                          overrides: dict | None = None):
   """
   Create LCA_4 (0x90) message to maintain Pilot Assist state when openpilot is active.
@@ -433,6 +433,7 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_lca_4: Dictionary containing LCA_4 message values from car
+    lca_4_curve_right: Pre-computed curve right value (0 or 255) with hysteresis applied
     overrides: Optional dict of signal overrides (keys are UPPERCASE DBC signal names)
 
   Returns:
@@ -450,7 +451,7 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle:
     'BYTE_1_NIBBLE_HI': msg_lca_4['BYTE_1_NIBBLE_HI'],
     'BYTE_2': msg_lca_4['BYTE_2'],
     'BYTE_3': msg_lca_4['BYTE_3'],
-    'LCA_4_CURVE_RIGHT': 255 if apply_angle < 0 else 0,  # 255 for right curve (negative angle), 0 otherwise
+    'LCA_4_CURVE_RIGHT': lca_4_curve_right,  # Pre-computed with hysteresis in carcontroller
     'BYTE_5': msg_lca_4['BYTE_5'], # TODO
     'BYTE_6': msg_lca_4['BYTE_6'],
     'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
