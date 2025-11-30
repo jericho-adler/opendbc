@@ -4,8 +4,7 @@ from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.carlog import carlog
 
 def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: dict,
-                       override_lca_steer: int | None = None,
-                       override_curve_right: int | None = None):
+                       overrides: dict | None = None):
   """
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
   Uses angle-based control via the LCA_STEER signal.
@@ -19,8 +18,7 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
     lat_active: Whether lateral control is active
     apply_angle: Steering angle in degrees (positive = left, negative = right)
     msg_lca: Dictionary containing LCA message values
-    override_lca_steer: Optional override for LCA_STEER (0-255), from live testing config
-    override_curve_right: Optional override for CURVE_RIGHT (0-255), from live testing config
+    overrides: Optional dict of signal overrides (keys are UPPERCASE DBC signal names)
   """
   if not lat_active:
     return packer.make_can_msg('LCA', 2, msg_lca)
@@ -46,19 +44,11 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
   # (Future: may use a different algorithm for LCA_STEER)
   lca_steer_value = LCATargetAngleEncoder.encode_lca_steer(apply_angle)
 
-  # Apply override from live testing config if provided
-  if override_lca_steer is not None:
-    lca_steer_value = override_lca_steer
-
   # Derive CURVE_RIGHT from angle direction (indicates LCA_STEER encoding side)
   # LEFT turn (angle > 0): LCA_STEER starts at 0, increments → CURVE_RIGHT = 0
   # RIGHT turn (angle < 0): LCA_STEER starts at 255, decrements → CURVE_RIGHT = 63
   # Mirrors LCA_TURN_BITS behavior: LEFT starts at 128+, RIGHT starts at 255-
   curve_right = 63 if apply_angle < 0 else 0
-
-  # Apply override from live testing config if provided
-  if override_curve_right is not None:
-    curve_right = override_curve_right
 
   values = {
     'NEW_SIGNAL_3': 2,
@@ -75,6 +65,11 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
     'LCA_STEER': lca_steer_value,
     'NEW_SIGNAL_6': 1, #15, # ?
   }
+
+  # Apply any overrides from live testing config
+  if overrides:
+    for key, val in overrides.items():
+      values[key] = val
 
   """if not lat_active:
     values = {
@@ -136,7 +131,8 @@ def create_lca_3_message(packer, lat_active: bool, apply_angle: float, msg_lca_3
       signal_9 = 255
     elif apply_angle < 0: # Right turn
       signal_9 = 0
-  signal_9 = msg_lca_3['NEW_SIGNAL_9'] # TODO: Remove
+  # signal_9 = msg_lca_3['NEW_SIGNAL_9'] # TODO: Remove
+  # NEW_SIGNAL_9 appears to be similar to LCA_5_STEER, but different scale, and zero-point is at 128. I haven't seen what happens once LCA_TURN_BITS wrap
   values = {
     'NEW_SIGNAL_3': 0 if lat_active else msg_lca_3['NEW_SIGNAL_3'],
     'LCA_ACCEPT_COMMANDS_RELATED': 15 if lat_active else msg_lca_3['LCA_ACCEPT_COMMANDS_RELATED'],
@@ -254,7 +250,7 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   return packer.make_can_msg('LCA_2', 2, values)
 
 def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_lca_5: dict, counter: int,
-                         override_turn_bits: int | None = None, override_steer: int | None = None):
+                         overrides: dict | None = None):
   """
   Create LCA_5 message (0x67) with angle-based steering control.
 
@@ -264,8 +260,7 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     target_angle_deg: Target steering angle in degrees (positive = left, negative = right)
     msg_lca_5: Stock LCA_5 values from car
     counter: Counter value (0-15, increments by 4)
-    override_turn_bits: Optional override for LCA_TURN_BITS (0-255), from live testing config
-    override_steer: Optional override for LCA_5_STEER (0-255), from live testing config
+    overrides: Optional dict of signal overrides (keys are UPPERCASE DBC signal names)
 
   Returns:
     CAN message for LCA_5 on bus 2
@@ -279,12 +274,6 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     # When not active, use inactive encoding
     lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
 
-  # Apply overrides from live testing config (each independently)
-  if override_turn_bits is not None:
-    lca_turn_bits = override_turn_bits
-  if override_steer is not None:
-    lca_5_steer = override_steer
-
   # Build values dictionary (wheel speeds and counter unchanged)
   values = {
     'WHEEL_SPEED_1': msg_lca_5['WHEEL_SPEED_1'],
@@ -296,6 +285,11 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     'LCA_TURN_BITS': lca_turn_bits,  # Byte 6 - angle encoding
     'LCA_5_STEER': lca_5_steer,      # Byte 7 - angle encoding
   }
+
+  # Apply any overrides from live testing config
+  if overrides:
+    for key, val in overrides.items():
+      values[key] = val
 
   # Build bytes for checksum calculation (unchanged)
   def build_bytes(vals: dict) -> list[int]:
@@ -420,7 +414,8 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
 
-def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle: float):
+def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle: float,
+                         overrides: dict | None = None):
   """
   Create LCA_4 (0x90) message to maintain Pilot Assist state when openpilot is active.
 
@@ -438,6 +433,7 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_lca_4: Dictionary containing LCA_4 message values from car
+    overrides: Optional dict of signal overrides (keys are UPPERCASE DBC signal names)
 
   Returns:
     CAN message for LCA_4 on bus 2
@@ -454,12 +450,17 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle:
     'BYTE_1_NIBBLE_HI': msg_lca_4['BYTE_1_NIBBLE_HI'],
     'BYTE_2': msg_lca_4['BYTE_2'],
     'BYTE_3': msg_lca_4['BYTE_3'],
-    'BYTE_4': msg_lca_4['BYTE_4'],
+    'LCA_4_CURVE_RIGHT': 255 if apply_angle < 0 else 0,  # 255 for right curve (negative angle), 0 otherwise
     'BYTE_5': msg_lca_4['BYTE_5'], # TODO
     'BYTE_6': msg_lca_4['BYTE_6'],
     'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
     'BYTE_7_NIBBLE_HI': msg_lca_4['BYTE_7_NIBBLE_HI'],
   }
+
+  # Apply any overrides from live testing config
+  if overrides:
+    for key, val in overrides.items():
+      values[key] = val
 
   # TODO: Add checksum calculation when checksum function is implemented
   # If message has a checksum signal, it would be calculated here like:

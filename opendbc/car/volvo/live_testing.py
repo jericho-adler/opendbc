@@ -1,25 +1,45 @@
 class LiveTestingManager:
   TESTING_FILE = "/data/openpilot/live_testing.txt"
 
+  # Valid function names for dot-notation overrides
+  VALID_FUNCTIONS = {'lca_5', 'lca', 'lca_2', 'lca_3', 'lca_4'}
+
   def __init__(self):
     pass  # No state needed - reads file fresh every call
+
+  @staticmethod
+  def _parse_value(value_str: str):
+    """Auto-detect type: try bool, then int, then float, else keep as string."""
+    if value_str in ('True', 'False'):
+      return value_str == 'True'
+    try:
+      return int(value_str)
+    except ValueError:
+      try:
+        return float(value_str)
+      except ValueError:
+        return value_str
 
   def load_config(self) -> dict | None:
     """
     Load live testing configuration from file.
 
+    Supports two formats:
+    - Global keys: lat_active=True, apply_angle=5.0
+    - Function-scoped keys (dot notation): lca_5.lca_turn_bits=128
+
+    Function-scoped keys are grouped into nested dicts with UPPERCASE field names
+    (to match DBC signal names).
+
     Returns:
       - None if file doesn't exist, parse fails, or lat_active=False
-      - dict with available override keys if lat_active=True or not specified
-        (partial configs supported - missing keys will be absent from dict)
+      - dict with global keys and function-scoped nested dicts
 
     Example return values:
       - File doesn't exist → None
       - File contains lat_active=False → None
-      - File contains lat_active=True → {'lat_active': True}
-      - File contains all params → {'lat_active': True, 'lca_turn_bits': 128, 'lca_5_steer': 255, 'lca_steer': 100}
-      - File contains only LCA_5 bytes → {'lca_turn_bits': 128, 'lca_5_steer': 255}
-      - File contains only LCA byte → {'lca_steer': 100}
+      - File contains: lat_active=True, lca_5.lca_turn_bits=128, lca.lca_steer=100
+        → {'lat_active': True, 'lca_5': {'LCA_TURN_BITS': 128}, 'lca': {'LCA_STEER': 100}}
     """
     try:
       with open(self.TESTING_FILE, 'r') as f:
@@ -28,104 +48,54 @@ class LiveTestingManager:
       config = {}
 
       for line in lines:
-        # Strip whitespace
         line = line.strip()
 
-        # Skip empty lines and comments
         if not line or line.startswith('#'):
           continue
 
-        # Skip lines without '='
         if '=' not in line:
           continue
 
-        # Parse key=value
         key, value = line.split('=', 1)
         key = key.strip()
         value = value.strip()
 
-        # Strip inline comments (everything after #)
+        # Strip inline comments
         if '#' in value:
           value = value.split('#', 1)[0].strip()
 
-        # Parse lat_active (boolean)
-        if key == 'lat_active':
-          if value == 'True':
-            config['lat_active'] = True
-          elif value == 'False':
-            config['lat_active'] = False
-          else:
-            # Invalid boolean value, skip this line
+        # Check for dot notation (function-scoped override)
+        if '.' in key:
+          func_name, field_name = key.split('.', 1)
+          if func_name not in self.VALID_FUNCTIONS:
             continue
+          if func_name not in config:
+            config[func_name] = {}
+          # Convert field name to UPPERCASE (DBC signals are uppercase)
+          config[func_name][field_name.upper()] = self._parse_value(value)
+        else:
+          # Global keys (lat_active, apply_angle)
+          if key == 'lat_active':
+            if value == 'True':
+              config['lat_active'] = True
+            elif value == 'False':
+              config['lat_active'] = False
+          elif key == 'apply_angle':
+            try:
+              config['apply_angle'] = float(value)
+            except ValueError:
+              continue
 
-        # Parse lca_turn_bits (0-255)
-        elif key == 'lca_turn_bits':
-          try:
-            val = int(value)
-            if 0 <= val <= 255:
-              config['lca_turn_bits'] = val
-            # else: out of bounds, skip this line
-          except ValueError:
-            # Invalid integer, skip this line
-            continue
-
-        # Parse lca_5_steer (0-255) - LCA_5 message (0x67) byte 7
-        elif key == 'lca_5_steer':
-          try:
-            val = int(value)
-            if 0 <= val <= 255:
-              config['lca_5_steer'] = val
-            # else: out of bounds, skip this line
-          except ValueError:
-            # Invalid integer, skip this line
-            continue
-
-        # Parse lca_steer (0-255) - LCA message (0x58) LCA_STEER signal
-        elif key == 'lca_steer':
-          try:
-            val = int(value)
-            if 0 <= val <= 255:
-              config['lca_steer'] = val
-            # else: out of bounds, skip this line
-          except ValueError:
-            # Invalid integer, skip this line
-            continue
-
-        # Parse curve_right (0-255) - LCA message (0x58) CURVE_RIGHT signal
-        # Typically: 0 = left turn/neutral, 63 = right turn
-        elif key == 'curve_right':
-          try:
-            val = int(value)
-            if 0 <= val <= 255:
-              config['curve_right'] = val
-            # else: out of bounds, skip this line
-          except ValueError:
-            # Invalid integer, skip this line
-            continue
-
-        # Parse apply_angle (float, degrees) - overrides steering angle for all messages
-        # Positive = left, negative = right
-        elif key == 'apply_angle':
-          try:
-            val = float(value)
-            config['apply_angle'] = val
-          except ValueError:
-            # Invalid float, skip this line
-            continue
-
-      # If lat_active is explicitly False in config, return None (ignore all overrides)
+      # If lat_active is explicitly False, return None
       if 'lat_active' in config and config['lat_active'] is False:
         return None
 
-      # If config is empty, return None (no valid overrides)
       if not config:
         return None
 
       return config
 
     except FileNotFoundError:
-      # File doesn't exist - use standard operation
       return None
     except Exception:
-      # Any other error - fall back to standard operation
       return None

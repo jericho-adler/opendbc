@@ -71,17 +71,9 @@ class CarController(CarControllerBase):
       # No rate limiting initially - apply desired angle directly
       # TODO: Add rate limiting after basic functionality is confirmed
 
-      # Extract LCA overrides from live testing config (loaded at 50 Hz)
-      if self.liveTestingConfig:
-        override_lca_steer = self.liveTestingConfig.get('lca_steer')
-        override_curve_right = self.liveTestingConfig.get('curve_right')
-      else:
-        override_lca_steer = None
-        override_curve_right = None
-
       # LCA - 0x58 - 100 Hz (angle-based, encoding handled by LCATargetAngleEncoder)
-      can_sends.append(create_lca_message(self.packer, lat_active, apply_angle, CS.msg_lca,
-                                          override_lca_steer, override_curve_right))
+      lca_overrides = self.liveTestingConfig.get('lca') if self.liveTestingConfig else None
+      can_sends.append(create_lca_message(self.packer, lat_active, apply_angle, CS.msg_lca, lca_overrides))
       self.apply_angle_last = apply_angle
 
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
@@ -152,17 +144,9 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      # Extract override parameters using explicit if conditions
-      if self.liveTestingConfig:
-        override_turn_bits = self.liveTestingConfig.get('lca_turn_bits')
-        override_steer = self.liveTestingConfig.get('lca_5_steer')
-      else:
-        override_turn_bits = None
-        override_steer = None
-
+      lca_5_overrides = self.liveTestingConfig.get('lca_5') if self.liveTestingConfig else None
       can_sends.append(create_lca_5_message(self.packer, lat_active, apply_angle,
-                                            CS.msg_lca_5, self.lca_5_counter,
-                                            override_turn_bits, override_steer))
+                                            CS.msg_lca_5, self.lca_5_counter, lca_5_overrides))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active
@@ -170,7 +154,8 @@ class CarController(CarControllerBase):
     self.lca_4_acc += 29
     if self.lca_4_acc >= 100:
       self.lca_4_acc -= 100
-      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, apply_angle))
+      lca_4_overrides = self.liveTestingConfig.get('lca_4') if self.liveTestingConfig else None
+      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, apply_angle, lca_4_overrides))
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach
