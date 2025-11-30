@@ -279,9 +279,10 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     # When not active, use inactive encoding
     lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
 
-  # Apply overrides from live testing config (only if both are provided)
-  if override_turn_bits is not None and override_steer is not None:
+  # Apply overrides from live testing config (each independently)
+  if override_turn_bits is not None:
     lca_turn_bits = override_turn_bits
+  if override_steer is not None:
     lca_5_steer = override_steer
 
   # Build values dictionary (wheel speeds and counter unchanged)
