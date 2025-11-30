@@ -44,6 +44,10 @@ class LiveTestingManager:
         key = key.strip()
         value = value.strip()
 
+        # Strip inline comments (everything after #)
+        if '#' in value:
+          value = value.split('#', 1)[0].strip()
+
         # Parse lat_active (boolean)
         if key == 'lat_active':
           if value == 'True':
