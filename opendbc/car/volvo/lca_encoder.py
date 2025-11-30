@@ -10,13 +10,13 @@ Assumptions from empirical tests and desired behavior:
 
 LEFT (angle > 0):
 -----------------
-- We use:
-    LCA_TURN_BITS (byte 6) = 128
-    LCA_5_STEER   (byte 7) = 0..255
+- Byte 6 starts at 128, byte 7 goes 0→255
+- When byte 7 exceeds 255, it wraps to 0 and byte 6 increments to 129, etc.
 
-- Approximate mapping:
-    angle_deg ≈ SCALE * byte7
-    - So byte7 = round(angle_deg / SCALE)
+- Mapping using left_counts:
+    left_counts = (byte6 - 128) * 256 + byte7
+    angle_deg = left_counts * SCALE
+    - So left_counts = round(angle_deg / SCALE)
 
 - Near 0°, we treat (128, 0) as the canonical "neutral" command.
 
@@ -70,12 +70,18 @@ class LCATargetAngleEncoder:
         if abs(target_angle_deg) < 0.5:
             return (128, 0)
 
-        # LEFT: simple linear in byte7 with byte6 fixed at 128
+        # LEFT: byte6 starts at 128, byte7 0→255, then byte6 increments and byte7 wraps
         if target_angle_deg > 0:
-            # angle_deg ≈ SCALE * byte7
-            byte7 = int(round(target_angle_deg / SCALE))
-            byte7 = max(0, min(255, byte7))
-            byte6 = 128
+            # left_counts = (byte6 - 128) * 256 + byte7
+            left_counts = int(round(target_angle_deg / SCALE))
+            left_counts = max(0, min(0xFFFF, left_counts))  # Allow full range
+
+            # Decompose left_counts into (byte6, byte7)
+            k = left_counts // 256
+            r = left_counts % 256
+            byte6 = 128 + k
+            byte7 = r
+
             # Avoid inactive pattern accidentally
             if byte6 == 186 and byte7 == 0:
                 byte7 = 1
@@ -122,6 +128,22 @@ class LCATargetAngleEncoder:
         return (186, 0)
 
     @staticmethod
+    def encode_lca_steer(target_angle_deg: float) -> int:
+        """
+        Encode target angle to 1-byte LCA_STEER value (0-255) for LCA message (0x58).
+        Derived from the same encoding as LCA_5_STEER for consistency.
+
+        Args:
+            target_angle_deg: Target angle in degrees.
+                              Positive = LEFT, Negative = RIGHT, 0 = straight.
+
+        Returns:
+            int: LCA_STEER value (byte7 from the 2-byte encoding)
+        """
+        byte6, byte7 = LCATargetAngleEncoder.encode(target_angle_deg)
+        return byte7
+
+    @staticmethod
     def decode(byte6: int, byte7: int):
         """
         Decode (byte6, byte7) to target steering angle.
@@ -137,15 +159,14 @@ class LCATargetAngleEncoder:
         if byte6 == 186 and byte7 == 0:
             return None
 
-        # LEFT side: byte6 = 128 used for positive / neutral
-        if byte6 == 128:
-            return SCALE * byte7
+        # LEFT side: byte6 >= 128 (starts at 128, increments as angle increases)
+        if byte6 >= 128:
+            # left_counts = (byte6 - 128) * 256 + byte7
+            left_counts = (byte6 - 128) * 256 + byte7
+            return SCALE * left_counts
 
-        # RIGHT side region: byte6 ≤ 255, byte6 likely near 255, 254, ...
-        # Use right_counts formula if we’re on that side.
-        if byte6 <= 255:
-            right_counts = (255 - byte6) * 256 + (255 - byte7)
-            return - right_counts * SCALE
-
-        # Fallback: unknown pattern – treat as no valid angle
-        return None
+        # RIGHT side region: byte6 < 128 (starts at 255, decrements as angle increases)
+        # Note: byte6 values 255, 254, ... wrap around, so byte6 < 128 means we've
+        # wrapped past the inactive zone. Use right_counts formula.
+        right_counts = (255 - byte6) * 256 + (255 - byte7)
+        return - right_counts * SCALE

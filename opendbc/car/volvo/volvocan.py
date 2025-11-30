@@ -3,129 +3,12 @@ from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_me
 from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.carlog import carlog
 
-
-def torque_to_lca5_bytes(torque_16bit: int) -> tuple[int, int]:
-  """
-  Convert 16-bit signed torque value to LCA_5 message bytes.
-
-  Encoding scheme discovered from stock Volvo CMA system:
-  - Left (positive): LCA_TURN_BITS increments from 128, STEER counts 0-255
-  - Right (negative): LCA_TURN_BITS decrements from 255, STEER counts 255-0
-  - Neutral: LCA_TURN_BITS=186 (0xBA), STEER=0
-
-  Args:
-    torque_16bit: Signed torque value (-1791 to +1791)
-
-  Returns:
-    Tuple of (lca_turn_bits, lca_5_steer) both 0-255
-
-  Examples:
-    torque_to_lca5_bytes(0)    → (186, 0)   # Neutral
-    torque_to_lca5_bytes(255)  → (128, 255) # Small left
-    torque_to_lca5_bytes(256)  → (129, 0)   # Transition
-    torque_to_lca5_bytes(1791) → (134, 255) # Max left
-    torque_to_lca5_bytes(-255) → (255, 0)   # Small right
-    torque_to_lca5_bytes(-256) → (254, 255) # Transition
-    torque_to_lca5_bytes(-1791)→ (249, 0)   # Max right
-  """
-  from opendbc.car.volvo.values import CarControllerParams as CCP
-
-  # Clamp to safe limits
-  torque_16bit = max(CCP.LCA_TORQUE_MIN, min(CCP.LCA_TORQUE_MAX, torque_16bit))
-
-  if torque_16bit == 0:
-    # Neutral/inactive
-    return (CCP.LCA_TURN_INACTIVE, 0)
-
-  elif torque_16bit > 0:
-    # Left turn (positive torque)
-    # Formula: torque = (LCA_TURN_BITS - 128) × 256 + STEER
-    # Solve for LCA_TURN_BITS and STEER:
-    high_byte = torque_16bit // 256  # How many full 256-step increments
-    low_byte = torque_16bit % 256     # Remainder within current 256 range
-
-    lca_turn_bits = CCP.LCA_TURN_LEFT_MIN + high_byte
-    lca_5_steer = low_byte
-
-    # Clamp to maximum
-    if lca_turn_bits > CCP.LCA_TURN_LEFT_MAX:
-      lca_turn_bits = CCP.LCA_TURN_LEFT_MAX
-      lca_5_steer = 255
-
-    return (lca_turn_bits, lca_5_steer)
-
-  else:
-    # Right turn (negative torque)
-    # Formula: torque = -(255 - LCA_TURN_BITS) × 256 - (255 - STEER)
-    # Working with absolute value for clarity
-    abs_torque = abs(torque_16bit)
-
-    high_byte = abs_torque // 256
-    low_byte = abs_torque % 256
-
-    # For right turn: LCA_TURN_BITS decrements from 255
-    lca_turn_bits = CCP.LCA_TURN_RIGHT_MAX - high_byte
-    # STEER counts down from 255
-    lca_5_steer = 255 - low_byte
-
-    # Clamp to minimum
-    if lca_turn_bits < CCP.LCA_TURN_RIGHT_MIN:
-      lca_turn_bits = CCP.LCA_TURN_RIGHT_MIN
-      lca_5_steer = 0
-
-    return (lca_turn_bits, lca_5_steer)
-
-
-def lca5_bytes_to_torque(lca_turn_bits: int, lca_5_steer: int) -> int:
-  """
-  Convert LCA_5 message bytes back to 16-bit signed torque value.
-
-  This is the inverse of torque_to_lca5_bytes() and useful for:
-  - Testing/validation
-  - Debugging
-  - Reading stock LCA commands
-
-  Args:
-    lca_turn_bits: LCA_TURN_BITS value (0-255)
-    lca_5_steer: LCA_5_STEER value (0-255)
-
-  Returns:
-    Signed torque value (-1791 to +1791)
-
-  Examples:
-    lca5_bytes_to_torque(186, 0)   → 0     # Neutral
-    lca5_bytes_to_torque(128, 255) → 255   # Small left
-    lca5_bytes_to_torque(129, 0)   → 256   # Transition
-    lca5_bytes_to_torque(134, 255) → 1791  # Max left
-    lca5_bytes_to_torque(255, 0)   → -255  # Small right
-    lca5_bytes_to_torque(254, 255) → -256  # Transition
-    lca5_bytes_to_torque(249, 0)   → -1791 # Max right
-  """
-  from opendbc.car.volvo.values import CarControllerParams as CCP
-
-  # Check for neutral/inactive
-  if lca_turn_bits == CCP.LCA_TURN_INACTIVE:
-    return 0
-
-  # Check if left turn range
-  if CCP.LCA_TURN_LEFT_MIN <= lca_turn_bits <= CCP.LCA_TURN_LEFT_MAX:
-    # Left turn: torque = (LCA_TURN_BITS - 128) × 256 + STEER
-    return (lca_turn_bits - CCP.LCA_TURN_LEFT_MIN) * 256 + lca_5_steer
-
-  # Check if right turn range
-  elif CCP.LCA_TURN_RIGHT_MIN <= lca_turn_bits <= CCP.LCA_TURN_RIGHT_MAX:
-    # Right turn: torque = -(255 - LCA_TURN_BITS) × 256 - (255 - STEER)
-    return -((CCP.LCA_TURN_RIGHT_MAX - lca_turn_bits) * 256 + (255 - lca_5_steer))
-
-  else:
-    # Unknown/invalid range - treat as neutral
-    return 0
-
-
-def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: dict):
+def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: dict,
+                       override_lca_steer: int | None = None,
+                       override_curve_right: int | None = None):
   """
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
-  Uses torque-based control via the LCA_STEER signal.
+  Uses angle-based control via the LCA_STEER signal.
 
   NOTE: This message must be sent continuously (even when inactive) because
   stock LCA is permanently blocked by panda safety. When lat_active=False,
@@ -134,8 +17,10 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
-    apply_torque: Steering torque to apply (-127 to +127)
+    apply_angle: Steering angle in degrees (positive = left, negative = right)
     msg_lca: Dictionary containing LCA message values
+    override_lca_steer: Optional override for LCA_STEER (0-255), from live testing config
+    override_curve_right: Optional override for CURVE_RIGHT (0-255), from live testing config
   """
   if not lat_active:
     return packer.make_can_msg('LCA', 2, msg_lca)
@@ -143,9 +28,8 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   baseline_loosely_1 = 102 # Standard straight road or light right turn
   baseline_loosely_2 = 154 # Standard straight road or light right turn
 
-  # In openpilot, a positive actuators.torque value corresponds to a LEFT turn.
+  # In openpilot, a positive angle corresponds to a LEFT turn.
   # In Volvo, a positive LCA_STEER value corresponds to a LEFT turn.
-  lca_steer = apply_torque
 
   loosely_1 = baseline_loosely_1
   loosely_2 = baseline_loosely_2
@@ -153,29 +37,28 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int, msg_lca: di
   loosely_1_original = msg_lca['LCA_STEER_LOOSELY_1']
   loosely_2_original = msg_lca['LCA_STEER_LOOSELY_2']
 
-  curve_right = 0
-  if lca_steer < 0:
-    curve_right = 63
-  elif lca_steer > 0:
-    curve_right = 0
-    #loosely_1 = 152
-    #loosely_2 = 230
-
   if loosely_1_original != 0 or loosely_2_original != 0: # TODO Temporary
     #loosely_1 = loosely_1_original
     #loosely_2 = loosely_2_original
     pass
 
-  # LCA_STEER encoding depends on direction (similar to LCA_5_STEER):
-  # - Left turn (apply_torque > 0): zero point is 0, use absolute value
-  # - Right turn (apply_torque < 0): zero point is 255, use 255 - abs(value)
-  if lat_active:
-    if apply_torque < 0:  # Right turn
-      lca_steer_value = 255 - abs(apply_torque)
-    else:  # Left turn or neutral
-      lca_steer_value = abs(apply_torque)
-  else:
-    lca_steer_value = 0
+  # Derive LCA_STEER from same encoder as LCA_5_STEER for consistency
+  # (Future: may use a different algorithm for LCA_STEER)
+  lca_steer_value = LCATargetAngleEncoder.encode_lca_steer(apply_angle)
+
+  # Apply override from live testing config if provided
+  if override_lca_steer is not None:
+    lca_steer_value = override_lca_steer
+
+  # Derive CURVE_RIGHT from angle direction (indicates LCA_STEER encoding side)
+  # LEFT turn (angle > 0): LCA_STEER starts at 0, increments → CURVE_RIGHT = 0
+  # RIGHT turn (angle < 0): LCA_STEER starts at 255, decrements → CURVE_RIGHT = 63
+  # Mirrors LCA_TURN_BITS behavior: LEFT starts at 128+, RIGHT starts at 255-
+  curve_right = 63 if apply_angle < 0 else 0
+
+  # Apply override from live testing config if provided
+  if override_curve_right is not None:
+    curve_right = override_curve_right
 
   values = {
     'NEW_SIGNAL_3': 2,
@@ -235,7 +118,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, sp
 
   return packer.make_can_msg('PSCM', 0, values)
 
-def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3: dict, counter_value: int):
+def create_lca_3_message(packer, lat_active: bool, apply_angle: float, msg_lca_3: dict, counter_value: int):
   """
   Create LCA_3 message for Volvo CMA platform.
   This message enables PSCM to accept LCA commands.
@@ -243,14 +126,15 @@ def create_lca_3_message(packer, lat_active: bool, apply_torque: int, msg_lca_3:
   Args:
     packer: CAN packer instance
     lat_active: Whether lateral control is active
+    apply_angle: Steering angle in degrees (used for direction indicator)
     msg_lca_3: Dictionary containing LCA_3 message values
     counter_value: Counter value to use (from pattern or stock)
   """
   signal_9 = 128 if lat_active else msg_lca_3['NEW_SIGNAL_9']
   if lat_active:
-    if apply_torque > 0: # Left turn
+    if apply_angle > 0: # Left turn
       signal_9 = 255
-    elif apply_torque < 0: # Right turn
+    elif apply_angle < 0: # Right turn
       signal_9 = 0
   signal_9 = msg_lca_3['NEW_SIGNAL_9'] # TODO: Remove
   values = {
@@ -535,7 +419,7 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
 
-def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_steer: int):
+def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, apply_angle: float):
   """
   Create LCA_4 (0x90) message to maintain Pilot Assist state when openpilot is active.
 

@@ -1,11 +1,9 @@
 from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
-from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
-from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.volvo.live_testing import LiveTestingManager
-from opendbc.car.volvo.volvocan import create_lca_steering, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
+from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -63,28 +61,27 @@ class CarController(CarControllerBase):
 
       if not CC.latActive:
         apply_angle = CS.out.steeringAngleDeg  # Use current angle when inactive
-        lca_steer = 0
-      else:
-        # No rate limiting initially - apply desired angle directly
-        # TODO: Add rate limiting after basic functionality is confirmed
 
-        # Keep LCA (0x58) with torque-style encoding for now
-        # This is a simple approximation: convert angle to torque-like value
-        # Positive angle = left turn, negative angle = right turn
-        # Scale angle (±600° range) to ±255 range for LCA message
-        lca_steer = int(round(apply_angle * 255.0 / 600.0))
-        lca_steer = max(-255, min(255, lca_steer))
-
-      # Apply lca_steer override if present in live testing config (loaded at 50 Hz)
+      # Override apply_angle from live testing config if provided
       if self.liveTestingConfig:
-        lca_steer_override = self.liveTestingConfig.get('lca_steer')
-        if lca_steer_override is not None:
-          lca_steer = lca_steer_override
-      else:
-        lca_steer_override = None
+        override_apply_angle = self.liveTestingConfig.get('apply_angle')
+        if override_apply_angle is not None:
+          apply_angle = override_apply_angle
 
-      # LCA - 0x58 - 100 Hz (keep with torque-style encoding)
-      can_sends.append(create_lca_steering(self.packer, lat_active, lca_steer, CS.msg_lca))
+      # No rate limiting initially - apply desired angle directly
+      # TODO: Add rate limiting after basic functionality is confirmed
+
+      # Extract LCA overrides from live testing config (loaded at 50 Hz)
+      if self.liveTestingConfig:
+        override_lca_steer = self.liveTestingConfig.get('lca_steer')
+        override_curve_right = self.liveTestingConfig.get('curve_right')
+      else:
+        override_lca_steer = None
+        override_curve_right = None
+
+      # LCA - 0x58 - 100 Hz (angle-based, encoding handled by LCATargetAngleEncoder)
+      can_sends.append(create_lca_message(self.packer, lat_active, apply_angle, CS.msg_lca,
+                                          override_lca_steer, override_curve_right))
       self.apply_angle_last = apply_angle
 
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
@@ -113,7 +110,7 @@ class CarController(CarControllerBase):
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
       # Update counter with observed value, get counter to send
       counter, is_synced = self.lca_3_counter_sync.update(CS.msg_lca_3['COUNTER_1'])
-      can_sends.append(create_lca_3_message(self.packer, lat_active, lca_steer, CS.msg_lca_3, counter))
+      can_sends.append(create_lca_3_message(self.packer, lat_active, apply_angle, CS.msg_lca_3, counter))
       #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 
@@ -173,7 +170,7 @@ class CarController(CarControllerBase):
     self.lca_4_acc += 29
     if self.lca_4_acc >= 100:
       self.lca_4_acc -= 100
-      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, lca_steer))
+      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, apply_angle))
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach

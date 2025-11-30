@@ -56,10 +56,8 @@ class CarState(CarStateBase):
     ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR'] # openpilot expects a negative value for a right turn
     #ret.steeringAngleDeg = cp_party.vl['SAS']['SAS_ANGLE_SENSOR']
 
-    # For torque-based control, we need steering torque feedback
-    # TODO: Find actual steering torque signals in the DBC or reverse engineer them
-    ret.steeringTorque = -cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']  # Driver torque (car right turn is negative, openpilot right turn is positive)
-    #ret.steeringTorqueEps = 0  # EPS torque - placeholder until signal is found
+    # Driver steering torque feedback (used for driver override detection)
+    ret.steeringTorque = -cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']  # Car right turn is negative, openpilot right turn is positive
     ret.steeringPressed = abs(cp_party.vl['DRIVER_INPUT']['STEERING_DRIVER_INPUT']) > 2
 
     # EPS status - placeholder until actual signal is found

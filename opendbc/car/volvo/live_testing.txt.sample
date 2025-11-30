@@ -1,4 +1,17 @@
+# Live testing configuration for Volvo CMA steering
+# Copy to /data/openpilot/live_testing.txt and modify values
+
+# Enable/disable lateral control override
 lat_active=True
-lca_turn_bits=128
-lca_5_steer=255
-lca_steer=100
+
+# Steering angle override (degrees, positive=left, negative=right)
+# Overrides angle for all messages (LCA, LCA_3, LCA_4, LCA_5)
+#apply_angle=5.0
+
+# LCA_5 message (0x67) - Primary angle control
+lca_turn_bits=128    # Byte 6: 128=left neutral, 255=right neutral, 186=inactive
+lca_5_steer=0        # Byte 7: Angle encoding (0-255)
+
+# LCA message (0x58) - Secondary angle control
+lca_steer=0          # LCA_STEER signal (0-255)
+curve_right=0        # CURVE_RIGHT signal: 0=left/neutral, 63=right
