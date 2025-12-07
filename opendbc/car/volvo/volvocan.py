@@ -272,7 +272,10 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     #lca_5_steer = 255
   else:
     # When not active, use inactive encoding
-    lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
+    # lca_turn_bits, lca_5_steer = LCATargetAngleEncoder.encode_inactive()
+    # Fallback to stock LCA
+    lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
+    lca_5_steer = msg_lca_5['LCA_5_STEER']
 
   # Build values dictionary (wheel speeds and counter unchanged)
   values = {
