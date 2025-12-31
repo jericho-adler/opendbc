@@ -44,7 +44,7 @@ SPECIAL:
   should NOT be used to request 0°; encode_inactive() returns this and
   decode() returns None for it.
 
-- For |angle| < ~0.5°, encoder returns (128, 0) (neutral from LEFT).
+- For angle >= 0, encoder uses LEFT encoding; for angle < 0, uses RIGHT encoding.
 """
 
 SCALE = 0.05596  # degrees per count (symmetric magnitude)
@@ -66,12 +66,8 @@ class LCATargetAngleEncoder:
             (byte6, byte7): Tuple of bytes for LCA_5 message.
         """
 
-        # Deadband around 0°: use the LEFT neutral command
-        if abs(target_angle_deg) < 0.5:
-            return (128, 0)
-
         # LEFT: byte6 starts at 128, byte7 0→255, then byte6 increments and byte7 wraps
-        if target_angle_deg > 0:
+        if target_angle_deg >= 0:
             # left_counts = (byte6 - 128) * 256 + byte7
             left_counts = int(round(target_angle_deg / SCALE))
             left_counts = max(0, min(0xFFFF, left_counts))  # Allow full range
