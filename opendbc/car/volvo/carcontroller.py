@@ -3,8 +3,7 @@ from opendbc.car import Bus
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.live_testing import LiveTestingManager
-from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
-from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
+from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_lca_6_message, create_lca_7_message, create_speed_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
 
@@ -33,12 +32,9 @@ class CarController(CarControllerBase):
 
     # Counter management for LCA_5 (formerly SPEED_1)
     self.lca_5_counter = None  # Will grab initial value from CarState
-
-    self.last_lat_active = False  # Track state
-
-    # LCA_4_CURVE_RIGHT hysteresis state (0 or 255)
-    # Threshold at 186: value sticks until crossing past 186 from opposite side
-    self.lca_4_curve_right = 0
+    
+    self.lca_7_acc = 0  # Bresenham accumulator for 29 Hz
+    self.lca_7_last_steer = 0 # used to calculate change in steer from last update
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -76,7 +72,7 @@ class CarController(CarControllerBase):
       # No rate limiting initially - apply desired angle directly
       # TODO: Add rate limiting after basic functionality is confirmed
 
-      # LCA - 0x58 - 100 Hz (angle-based, encoding handled by LCATargetAngleEncoder)
+      # LCA - 0x58 - 100 Hz (angle-based)
       lca_overrides = self.liveTestingConfig.get('lca') if self.liveTestingConfig else None
       can_sends.append(create_lca_message(self.packer, lat_active, apply_angle, CS.msg_lca, lca_overrides))
       self.apply_angle_last = apply_angle
@@ -111,11 +107,10 @@ class CarController(CarControllerBase):
       #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
       pass
 
-    # SPEED messages - 0x60, 0x67, 0x68 - 50 Hz
+    # SPEED messages - 0x60, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
-      #can_sends.append(create_speed_3_message(self.packer, CS.msg_speed_3))
-      #can_sends.append(create_speed_1_message(self.packer, CS.msg_speed_1))
-      #can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      can_sends.append(create_speed_message(self.packer, CS.msg_speed))
+      can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
       pass
 
     # LCA_2 - 0x69 - 50 Hz
@@ -159,26 +154,31 @@ class CarController(CarControllerBase):
     self.lca_4_acc += 29
     if self.lca_4_acc >= 100:
       self.lca_4_acc -= 100
-      # Compute LCA_TURN_BITS for hysteresis check
-      lca_turn_bits, _ = LCATargetAngleEncoder.encode(apply_angle) if lat_active else LCATargetAngleEncoder.encode_inactive()
-      # Hysteresis around threshold 186:
-      # - From left side (128→186): stays 0 until lca_turn_bits > 186
-      # - From right side (255→186): stays 255 until lca_turn_bits < 186
-      # At exactly 186, value sticks to whatever it was
-      if self.lca_4_curve_right == 0 and lca_turn_bits > 186:
-        self.lca_4_curve_right = 255
-      elif self.lca_4_curve_right == 255 and lca_turn_bits < 186:
-        self.lca_4_curve_right = 0
       lca_4_overrides = self.liveTestingConfig.get('lca_4') if self.liveTestingConfig else None
-      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, self.lca_4_curve_right, lca_4_overrides))
+      can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, apply_angle, lca_4_overrides))
+    
+    # LCA_6 - 0X97 - 25 Hz
+    if self.frame % 4 == 0: # 25 Hz
+        lca_6_overrides = self.liveTestingConfig.get('lca_6') if self.liveTestingConfig else None
+        can_sends.append(create_lca_6_message(self.packer, lat_active, CS.msg_lca_6, apply_angle, lca_6_overrides))
+    
+    # LCA_7 - 0x92 - 29 Hz
+    # Using Bresenham-style accumulator for precise 29 Hz
+    self.lca_7_acc += 29
+    if self.lca_7_acc >= 100:
+      self.lca_7_acc -= 100
+      delta_steer = apply_angle - self.lca_7_last_steer
+      lca_7_overrides = self.liveTestingConfig.get('lca_7') if self.liveTestingConfig else None
+      can_sends.append(create_lca_7_message(self.packer, lat_active, CS.msg_lca_7, apply_angle, delta_steer, lca_7_overrides))
+      self.lca_7_last_steer = apply_angle
 
     # GEAR_POSITION - 0x80 - 40 Hz
     #self.gear_acc += 40 # Bresenham-style approach
     #if self.gear_acc >= 100:
     #    self.gear_acc -= 100
     if self.frame % 5 == 0 or self.frame % 5 == 2:  # 2/5 * 100 Hz = 40 Hz # openpilot forward delay causes DTC in EGSM, but fixes DTC in PSCM
-      #can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
-      pass
+      can_sends.append(create_gear_position_message(self.packer, CS.msg_gear_position))
+      #pass
 
     new_actuators = actuators.as_builder()
     new_actuators.steeringAngleDeg = self.apply_angle_last

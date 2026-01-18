@@ -24,12 +24,14 @@ class CarState(CarStateBase):
     self.msg_gear_position = {}
     self.pilot_assist_engaged = False
     self.msg_lca_5 = {}  # Formerly msg_speed_1
+    self.msg_speed = {}
     self.msg_speed_2 = {}
-    self.msg_speed_3 = {}
     self.msg_0x1a = {}
     self.msg_egsm = {}
     self.msg_pscm_related = {}
     self.msg_lca_4 = {}
+    self.msg_lca_6 = {}
+    self.msg_lca_7 = {}
   def update(self, can_parsers) -> structs.CarState:
     cp_main = can_parsers[Bus.main]
     cp_pt = can_parsers[Bus.pt]
@@ -97,7 +99,7 @@ class CarState(CarStateBase):
     ret.cruiseState.standstill = ret.standstill # False # Todo: Find cruise control standstill signal
 
     # gear
-    gearPosition = cp_main.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D
+    gearPosition = cp_main.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: P; 1: R; 2: N; 3: D; 4: B;
     if gearPosition == 0:
       ret.gearShifter = GearShifter.park
     elif gearPosition == 1:
@@ -105,6 +107,8 @@ class CarState(CarStateBase):
     elif gearPosition == 2:
       ret.gearShifter = GearShifter.neutral
     elif gearPosition == 3:
+      ret.gearShifter = GearShifter.drive
+    elif gearPosition == 4:
       ret.gearShifter = GearShifter.drive
 
     # blinkers TODO FlexRay
@@ -122,9 +126,10 @@ class CarState(CarStateBase):
     self.msg_lca_3 = cp_main.vl['LCA_3']
     self.msg_lca_4 = cp_main.vl['LCA_4']
     self.msg_lca_5 = cp_main.vl['LCA_5']
+    self.msg_lca_6 = cp_main.vl['LCA_6']
+    self.msg_lca_7 = cp_main.vl['LCA_7']
+    self.msg_speed = cp_main.vl['SPEED']
     self.msg_speed_2 = cp_main.vl['SPEED_2']
-    self.msg_speed_3 = cp_main.vl['SPEED_3']
-    self.msg_0x1a = cp_main.vl['NEW_MSG_1A']
     self.msg_gear_position = cp_main.vl['GEAR_POSITION']
     self.msg_egsm = cp_party.vl['EGSM']
     self.msg_pscm_related = cp_party.vl['PSCM_RELATED']
