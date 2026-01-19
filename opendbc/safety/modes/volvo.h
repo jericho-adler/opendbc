@@ -163,8 +163,8 @@ static safety_config volvo_init(uint16_t param) {
     {VOLVO_LCA_5, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_5 message sent to party bus (wheel speeds + LCA signals)
     {VOLVO_LCA_6, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_6 message sent to party bus
     {VOLVO_LCA_7, VOLVO_PARTY_BUS, 8, .check_relay = true},  // LCA_7 message sent to party bus
-    {VOLVO_SPEED, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED message sent to main bus
-    {VOLVO_SPEED_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_2 message sent to main bus
+    //{VOLVO_SPEED, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED message sent to main bus
+    //{VOLVO_SPEED_2, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_2 message sent to main bus
     {VOLVO_GEAR_POSITION, VOLVO_PARTY_BUS, 8, .check_relay = true},  // GEAR_POSITION message sent to main bus
     //{VOLVO_SPEED_3, VOLVO_PARTY_BUS, 8, .check_relay = true},  // SPEED_3 message sent to main bus
     //{VOLVO_0x1a, VOLVO_PARTY_BUS, 8, .check_relay = true},  // 0x1a message sent to main bus

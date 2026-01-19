@@ -111,8 +111,8 @@ class CarController(CarControllerBase):
 
     # SPEED messages - 0x60, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
-      can_sends.append(create_speed_message(self.packer, CS.msg_speed))
-      can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
+      #can_sends.append(create_speed_message(self.packer, CS.msg_speed))
+      #can_sends.append(create_speed_2_message(self.packer, CS.msg_speed_2))
       pass
 
     # LCA_2 - 0x69 - 50 Hz
