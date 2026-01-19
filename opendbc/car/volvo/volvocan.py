@@ -216,8 +216,8 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     CAN message for LCA_5 on bus 2
   """
   
-  # TODO: determine actual angle factor, pulled magic number from elsewhere and it works well enough for stationary testing
-  angle_factor = 0.05596
+  # Calibrated: 1 raw unit ≈ 1 degree (measured slope: 1.005, intercept: ~0)
+  angle_factor = 1.0
 
   # Build values dictionary (wheel speeds and counter unchanged)
   values = {
