@@ -225,41 +225,66 @@ class SteeringCalibrator:
     # First, find what stock LCA_TURN_BITS is
     # Then test various combinations
 
-    turn_bits_values = [186, 128, 255, 0, 64, 192]  # Common candidates
-    steer_values = [0, 10, 20, -10, -20]  # Small range for safety
+    # Test old encoding scheme values
+    # Old encoder: for angle >= 0, lca_turn_bits=128, lca_5_steer = angle/0.05596
+    # For angle < 0, lca_turn_bits=255, lca_5_steer = 255 - abs(angle)/0.05596
+    #
+    # Test points (target_angle -> expected LCA_TURN_BITS, LCA_5_STEER):
+    #   0.5° left  -> 128, 9
+    #   1.0° left  -> 128, 18
+    #   5.0° left  -> 128, 89
+    #   10.0° left -> 128, 179
+    #   0.5° right -> 255, 246
+    #   1.0° right -> 255, 237
+    #   5.0° right -> 255, 166
+    #   10.0° right -> 255, 76
+
+    test_points = [
+      # (LCA_TURN_BITS, LCA_5_STEER, expected_angle_if_old_encoding_works)
+      (128, 0, 0),
+      (128, 9, 0.5),      # 0.5° left
+      (128, 18, 1.0),     # 1.0° left
+      (128, 45, 2.5),     # 2.5° left
+      (128, 89, 5.0),     # 5.0° left
+      (128, 179, 10.0),   # 10.0° left
+      (255, 255, 0),      # 0° (right zero point)
+      (255, 246, -0.5),   # 0.5° right
+      (255, 237, -1.0),   # 1.0° right
+      (255, 210, -2.5),   # 2.5° right
+      (255, 166, -5.0),   # 5.0° right
+      (255, 76, -10.0),   # 10.0° right
+    ]
+
+    turn_bits_values = None  # Signal to use test_points instead
+    steer_values = None
 
     print(f"\n{'='*60}")
-    print("DISCOVERY MODE: Testing LCA_TURN_BITS + LCA_5_STEER combinations")
+    print("DISCOVERY MODE: Testing OLD ENCODING scheme values")
     print(f"{'='*60}")
-    print(f"LCA_TURN_BITS values: {turn_bits_values}")
-    print(f"LCA_5_STEER values: {steer_values}")
+    print("Testing if old 2-byte encoding produces expected angles:")
+    print("  Old scheme: counts = angle / 0.05596")
+    print("  LEFT:  LCA_TURN_BITS=128, LCA_5_STEER=counts")
+    print("  RIGHT: LCA_TURN_BITS=255, LCA_5_STEER=255-counts")
     print(f"Safety limit: ±{self.max_angle}°\n")
 
-    total_tests = len(turn_bits_values) * len(steer_values)
+    total_tests = len(test_points)
     test_num = 0
 
     with open(LOG_FILE, 'w') as log:
-      log.write("timestamp,lca_turn_bits,lca_5_steer,angle_deg,sample_num\n")
+      log.write("timestamp,lca_turn_bits,lca_5_steer,expected_angle,actual_angle,sample_num\n")
 
-      for turn_bits in turn_bits_values:
+      for turn_bits, steer, expected_angle in test_points:
         if not self.running:
           break
-        print(f"\n{'='*40}")
-        print(f"Testing LCA_TURN_BITS = {turn_bits}")
-        print(f"{'='*40}")
-
-        for steer in steer_values:
-          if not self.running:
-            break
-          test_num += 1
-          print(f"\n[{test_num}/{total_tests}]")
-          result = self._test_point(turn_bits, steer, log)
-          if result:
-            self.results.append((turn_bits, steer, result[0], result[1]))
+        test_num += 1
+        print(f"\n[{test_num}/{total_tests}] Expected: {expected_angle}°")
+        result = self._test_point(turn_bits, steer, log)
+        if result:
+          self.results.append((turn_bits, steer, expected_angle, result[0], result[1]))
 
     # Return to neutral
     print("\nReturning to neutral...")
-    self._write_live_testing(186, 0)  # Try inactive pattern
+    self._write_live_testing(128, 0)  # Left zero point
     self._wait_for_settle()
     self._disable_live_testing()
 
@@ -305,36 +330,34 @@ class SteeringCalibrator:
       return
 
     print(f"\n{'='*60}")
-    print("RESULTS: (LCA_TURN_BITS, LCA_5_STEER) → Steering Angle")
+    print("RESULTS: Old Encoding Test")
     print(f"{'='*60}")
+    print("\nIf old encoding works: Expected ≈ Actual")
+    print("If 1:1 mapping: Actual ≈ LCA_5_STEER (for TB=128) or 255-LCA_5_STEER (for TB=255)\n")
 
-    # Group by turn_bits
-    by_turn_bits = {}
-    for turn_bits, steer, angle, std in self.results:
-      if turn_bits not in by_turn_bits:
-        by_turn_bits[turn_bits] = []
-      by_turn_bits[turn_bits].append((steer, angle, std))
+    print(f"{'TB':>4} {'Steer':>6} {'Expected':>10} {'Actual':>10} {'Error':>8} {'Std':>6}")
+    print("-" * 50)
 
-    for turn_bits in sorted(by_turn_bits.keys()):
-      print(f"\nLCA_TURN_BITS = {turn_bits}:")
-      print(f"  {'LCA_5_STEER':>12} {'Angle':>10} {'Std':>8}")
-      print(f"  {'-'*32}")
+    for turn_bits, steer, expected, actual, std in self.results:
+      error = actual - expected
+      print(f"{turn_bits:>4} {steer:>6} {expected:>10.2f} {actual:>10.3f} {error:>+8.3f} {std:>6.3f}")
 
-      data = by_turn_bits[turn_bits]
-      for steer, angle, std in sorted(data):
-        print(f"  {steer:>12} {angle:>10.3f} {std:>8.3f}")
+    # Check if old encoding works (errors should be small)
+    errors = [abs(r[3] - r[2]) for r in self.results]
+    mean_error = statistics.mean(errors)
+    max_error = max(errors)
 
-      # Compute slope for this turn_bits value
-      if len(data) >= 2:
-        steers = [d[0] for d in data]
-        angles = [d[1] for d in data]
-        s_mean = statistics.mean(steers)
-        a_mean = statistics.mean(angles)
-        num = sum((s - s_mean) * (a - a_mean) for s, a in zip(steers, angles))
-        den = sum((s - s_mean) ** 2 for s in steers)
-        if abs(den) > 1e-10:
-          slope = num / den
-          print(f"  Slope: {slope:.4f} deg/unit")
+    print(f"\n{'Analysis':^50}")
+    print("-" * 50)
+    print(f"Mean absolute error: {mean_error:.3f}°")
+    print(f"Max absolute error:  {max_error:.3f}°")
+
+    if max_error < 1.0:
+      print("\n✓ OLD ENCODING WORKS! Fine-grained control is possible.")
+      print("  Resolution: ~0.056° per count")
+    else:
+      print("\n✗ Old encoding does NOT produce expected angles.")
+      print("  The 2-byte encoding theory may be incorrect.")
 
     print(f"\nLog saved to: {LOG_FILE}")
 
