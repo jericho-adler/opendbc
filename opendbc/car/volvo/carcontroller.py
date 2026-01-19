@@ -34,7 +34,7 @@ class CarController(CarControllerBase):
     self.lca_5_counter = None  # Will grab initial value from CarState
 
     self.last_lat_active = False  # Track state
-    
+
     self.lca_7_acc = 0  # Bresenham accumulator for 29 Hz
     self.lca_7_last_steer = 0 # used to calculate change in steer from last update
 
@@ -158,12 +158,12 @@ class CarController(CarControllerBase):
       self.lca_4_acc -= 100
       lca_4_overrides = self.liveTestingConfig.get('lca_4') if self.liveTestingConfig else None
       can_sends.append(create_lca_4_message(self.packer, lat_active, CS.msg_lca_4, apply_angle, lca_4_overrides))
-    
+
     # LCA_6 - 0X97 - 25 Hz
     if self.frame % 4 == 0: # 25 Hz
         lca_6_overrides = self.liveTestingConfig.get('lca_6') if self.liveTestingConfig else None
         can_sends.append(create_lca_6_message(self.packer, lat_active, CS.msg_lca_6, apply_angle, lca_6_overrides))
-    
+
     # LCA_7 - 0x92 - 29 Hz
     # Using Bresenham-style accumulator for precise 29 Hz
     self.lca_7_acc += 29
