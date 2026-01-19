@@ -27,17 +27,35 @@ class VolvoCarDocs(CarDocs):
 
 
 @dataclass
-class VolvoPlatformConfig(PlatformConfig):
+class VolvoCMAPlatformConfig(PlatformConfig):
   dbc_dict: DbcDict = field(default_factory=lambda: {
-    Bus.pt: 'volvo_cma',
-    Bus.main: 'volvo_cma',
-    Bus.party: 'volvo_cma',
+    Bus.pt: 'volvo_front_1_cma',
+    Bus.main: 'volvo_mid_1',
+    Bus.party: 'volvo_mid_1',
+  })
+  
+@dataclass
+class VolvoSPAPlatformConfig(PlatformConfig):
+  dbc_dict: DbcDict = field(default_factory=lambda: {
+    Bus.pt: 'volvo_front_1_spa',
+    Bus.main: 'volvo_mid_1',
+    Bus.party: 'volvo_mid_1',
   })
 
 
 class CAR(Platforms):
-  VOLVO_XC40_RECHARGE = VolvoPlatformConfig(
+  VOLVO_XC40_RECHARGE = VolvoCMAPlatformConfig(
     [VolvoCarDocs("Volvo XC40 Recharge 2021-2023")],
+    CarSpecs(
+      mass=2170,
+      wheelbase=2.702,
+      steerRatio=15.8,
+      centerToFrontRatio=0.52,
+    ),
+  )
+  #TODO update car specs
+  VOLVO_S60_RECHARGE = VolvoSPAPlatformConfig(
+    [VolvoCarDocs("Volvo S60 Recharge 2024")],
     CarSpecs(
       mass=2170,
       wheelbase=2.702,
