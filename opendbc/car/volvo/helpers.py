@@ -35,79 +35,55 @@ def checksum_lca_2_message(b0: int, b5: int) -> int:
 
   return c & 0xFF
 
-def checksum_2_0x69_message(b0: int, b1: int) -> int:
+def checksum_2_0x69_message(b0: int, b1: int, b3: int = 0, b4: int = 0) -> int:
   """
-  Compute checksum byte (b2) for CAN ID 0x69 based on bytes b0 and b1.
+  Compute checksum byte (b2) for CAN ID 0x69 (LCA_2 message).
+
+  The checksum depends on bytes 0, 1, 3, and 4. During normal driving (BYTE_1_MSBS_3=0),
+  bytes 3-4 (NEW_SIGNAL_2) are always 0, so only b0 and b1 matter. During stability
+  control events (aquaplaning, etc.), BYTE_1_MSBS_3 becomes non-zero and bytes 3-4
+  contain non-zero values that affect the checksum.
 
   Args:
-      b0: First data byte of the 0x69 frame (0–255).
-      b1: Second data byte of the 0x69 frame (0–255).
+      b0: Byte 0 (usually 0x18)
+      b1: Byte 1 ([7:5] BYTE_1_MSBS_3 | [4] PILOT_ASSIST_ENGAGED | [3:0] COUNTER_1)
+      b3: Byte 3 (NEW_SIGNAL_2 high byte, default 0)
+      b4: Byte 4 (NEW_SIGNAL_2 low byte, default 0)
 
   Returns:
-      The checksum byte (0–255) that should go in position b2.
+      Checksum byte (0-255) for position 2
   """
   b0 &= 0xFF
   b1 &= 0xFF
+  b3 &= 0xFF
+  b4 &= 0xFF
+
+  def bit(byte, pos):
+    return (byte >> pos) & 1
 
   c = 0
-
-  # bit 0 of b2
-  c |= ( ((b0 >> 0) & 1)
-       ^ ((b1 >> 2) & 1)
-       ^ ((b1 >> 3) & 1)
-       ^ ((b1 >> 4) & 1) ) << 0
-
-  # bit 1 of b2
-  c |= ( ((b0 >> 1) & 1)
-       ^ ((b0 >> 3) & 1)
-       ^ ((b1 >> 0) & 1)
-       ^ ((b1 >> 3) & 1)
-       ^ ((b1 >> 6) & 1) ) << 1
-
-  # bit 2 of b2
-  c |= ( ((b0 >> 0) & 1)
-       ^ ((b0 >> 3) & 1)
-       ^ ((b1 >> 1) & 1)
-       ^ ((b1 >> 2) & 1)
-       ^ ((b1 >> 3) & 1)
-       ^ ((b1 >> 4) & 1)
-       ^ ((b1 >> 6) & 1) ) << 2
-
-  # bit 3 of b2
-  c |= ( ((b0 >> 0) & 1)
-       ^ ((b0 >> 1) & 1)
-       ^ ((b1 >> 0) & 1)
-       ^ ((b1 >> 4) & 1)
-       ^ ((b1 >> 6) & 1) ) << 3
-
-  # bit 4 of b2
-  c |= ( ((b0 >> 0) & 1)
-       ^ ((b0 >> 1) & 1)
-       ^ ((b0 >> 3) & 1)
-       ^ ((b1 >> 1) & 1)
-       ^ ((b1 >> 2) & 1)
-       ^ ((b1 >> 3) & 1)
-       ^ ((b1 >> 4) & 1) ) << 4
-
-  # bit 5 of b2
-  c |= ( ((b0 >> 1) & 1)
-       ^ ((b1 >> 0) & 1)
-       ^ ((b1 >> 2) & 1)
-       ^ ((b1 >> 3) & 1) ) << 5
-
-  # bit 6 of b2
-  c |= ( ((b0 >> 3) & 1)
-       ^ ((b1 >> 0) & 1)
-       ^ ((b1 >> 1) & 1)
-       ^ ((b1 >> 3) & 1)
-       ^ ((b1 >> 6) & 1) ) << 6
-
-  # bit 7 of b2
-  c |= ( ((b0 >> 3) & 1)
-       ^ ((b1 >> 1) & 1)
-       ^ ((b1 >> 2) & 1)
-       ^ ((b1 >> 4) & 1) ) << 7
-
+  # Bit 0
+  c |= (bit(b0, 0) ^ bit(b1, 2) ^ bit(b1, 3) ^ bit(b1, 4) ^ bit(b1, 5) ^ bit(b4, 0) ^ bit(b4, 1)) << 0
+  # Bit 1
+  c |= (bit(b0, 1) ^ bit(b0, 3) ^ bit(b1, 0) ^ bit(b1, 3) ^ bit(b1, 5) ^ bit(b1, 6) ^
+        bit(b3, 1) ^ bit(b4, 0) ^ bit(b4, 1) ^ bit(b4, 2)) << 1
+  # Bit 2
+  c |= (bit(b0, 0) ^ bit(b0, 3) ^ bit(b1, 1) ^ bit(b1, 2) ^ bit(b1, 3) ^ bit(b1, 4) ^ bit(b1, 5) ^ bit(b1, 6) ^
+        bit(b3, 0) ^ bit(b3, 1) ^ bit(b4, 0) ^ bit(b4, 2) ^ bit(b4, 3)) << 2
+  # Bit 3
+  c |= (bit(b0, 0) ^ bit(b0, 1) ^ bit(b1, 0) ^ bit(b1, 4) ^ bit(b1, 6) ^
+        bit(b3, 0) ^ bit(b3, 1) ^ bit(b4, 0) ^ bit(b4, 3) ^ bit(b4, 4)) << 3
+  # Bit 4
+  c |= (bit(b0, 0) ^ bit(b0, 1) ^ bit(b0, 3) ^ bit(b1, 1) ^ bit(b1, 2) ^ bit(b1, 3) ^ bit(b1, 4) ^
+        bit(b4, 4) ^ bit(b4, 5)) << 4
+  # Bit 5
+  c |= (bit(b0, 1) ^ bit(b1, 0) ^ bit(b1, 2) ^ bit(b1, 3) ^ bit(b1, 5) ^
+        bit(b3, 1) ^ bit(b4, 5) ^ bit(b4, 6)) << 5
+  # Bit 6
+  c |= (bit(b0, 3) ^ bit(b1, 0) ^ bit(b1, 1) ^ bit(b1, 3) ^ bit(b1, 6) ^
+        bit(b3, 0) ^ bit(b4, 6) ^ bit(b4, 7)) << 6
+  # Bit 7
+  c |= (bit(b0, 3) ^ bit(b1, 1) ^ bit(b1, 2) ^ bit(b1, 4) ^ bit(b4, 0) ^ bit(b4, 7)) << 7
   return c & 0xFF
 
 def checksum_1_pscm_related_message(b1, b2):

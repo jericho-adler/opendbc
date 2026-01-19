@@ -148,6 +148,10 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
           ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
           ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
     b2 = int(values['CHECKSUM_2']) & 0xFF
+    # NEW_SIGNAL_2 is a 16-bit big-endian value spanning bytes 3-4
+    new_signal_2 = int(values['NEW_SIGNAL_2']) & 0xFFFF
+    b3 = (new_signal_2 >> 8) & 0xFF  # High byte
+    b4 = new_signal_2 & 0xFF          # Low byte
     # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
     # raw = (physical - offset) / scale = (physical - 1) / -1
     brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
@@ -155,14 +159,14 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
           ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
           ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
           ((brake_pedal_a_raw & 0x01) << 7))
-    b3 = None
-    b4 = None
     return [b0, b1, b2, b3, b4, b5]
 
   built_bytes = build_bytes(values)
   b0 = built_bytes[0]
   b1 = built_bytes[1]
   b2 = built_bytes[2]
+  b3 = built_bytes[3]
+  b4 = built_bytes[4]
   b5 = built_bytes[5]
 
   values['CHECKSUM_1'] = checksum_lca_2_message(b0, b5)
@@ -175,24 +179,24 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
       print(f"b0={b0}, b1={b1}, b2={b2}, b5={b5}, calculated={values['CHECKSUM_1']}, expected={msg_lca_2['CHECKSUM_1']}")
       #assert False
 
-  # Checksum 2
-  #b1 = (int(values['BYTE_1_MSBS_3']) & 0b111) << 5 | (int(values['PILOT_ASSIST_ENGAGED']) & 0b1) << 4 | (int(values['COUNTER_1']) & 0b1111)
-  checksum_2 = checksum_2_0x69_message(b0, b1)
+  # Checksum 2 - depends on bytes 0, 1, 3, and 4
+  checksum_2 = checksum_2_0x69_message(b0, b1, b3, b4)
   values['CHECKSUM_2'] = checksum_2
   if not lat_active:
     if values['CHECKSUM_2'] != msg_lca_2['CHECKSUM_2']:
       carlog.warning("[volvocan.py] LCA_2 CHECKSUM_2 mismatch")
-      print(f"b0={b0}, b1={b1}, calculated={values['CHECKSUM_2']}, expected={msg_lca_2['CHECKSUM_2']}")
+      print(f"b0={b0}, b1={b1}, b3={b3}, b4={b4}, calculated={values['CHECKSUM_2']}, expected={msg_lca_2['CHECKSUM_2']}")
       #assert False
   values['COUNTER_1'] = counter_1
   values['COUNTER_2'] = counter_2
   built_bytes = build_bytes(values)
   b0 = built_bytes[0]
   b1 = built_bytes[1]
-  b2 = built_bytes[2]
+  b3 = built_bytes[3]
+  b4 = built_bytes[4]
   b5 = built_bytes[5]
   values['CHECKSUM_1'] = checksum_lca_2_message(b0, b5)
-  values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1)
+  values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1, b3, b4)
   return packer.make_can_msg('LCA_2', 2, values)
 
 def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_lca_5: dict, counter: int,
