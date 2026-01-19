@@ -216,8 +216,8 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     CAN message for LCA_5 on bus 2
   """
   
-  # Calibrated: 1 raw unit ≈ 1 degree (measured slope: 1.005, intercept: ~0)
-  angle_factor = 1.0
+  # DBC defines LCA_5_STEER as 15-bit signed with scale 0.05596 deg/count
+  # Packer handles the encoding automatically - just pass the angle in degrees
 
   # Build values dictionary (wheel speeds and counter unchanged)
   values = {
@@ -227,8 +227,7 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
     'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
     'NEW_SIGNAL_2': msg_lca_5['NEW_SIGNAL_2'],
-    'LCA_TURN_BITS': msg_lca_5['LCA_TURN_BITS'],
-    'LCA_5_STEER': (target_angle_deg * angle_factor) if lat_active else msg_lca_5['LCA_5_STEER'],
+    'LCA_5_STEER': target_angle_deg if lat_active else msg_lca_5['LCA_5_STEER'],
     'COUNTER': counter,
   }
 
