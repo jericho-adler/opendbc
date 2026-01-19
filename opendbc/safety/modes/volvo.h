@@ -14,9 +14,8 @@
 #define VOLVO_BUS1_CRUISE_CONTROL 0x340U   // RX from BCM, cruise control state (BUS1_CRUISE_CONTROL)
 #define VOLVO_LCA_3               0x57U   // TX from VCU1 to PSCM
 #define VOLVO_LCA_5               0x67U   // TX LCA_5 message (formerly SPEED_1, contains wheel speeds and LCA signals)
-#define VOLVO_SPEED               0x60U   // TX SPEED message
+#define VOLVO_SPEED               0x60U   // RX/TX SPEED message
 #define VOLVO_SPEED_2             0x68U   // RX
-#define VOLVO_SPEED_3             0x60U   // RX
 #define VOLVO_0x1a                0x1aU   // RX
 #define VOLVO_EGSM                0x45U   // RX from EGSM
 #define VOLVO_PSCM_RELATED        0x17U   // RX from PSCM, related messages
@@ -191,7 +190,6 @@ static safety_config volvo_init(uint16_t param) {
     {.msg = {{VOLVO_LCA_5, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SPEED, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_SPEED_2, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{VOLVO_SPEED_3, VOLVO_MAIN_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_EGSM, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{VOLVO_PSCM_RELATED, VOLVO_PARTY_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
