@@ -421,7 +421,6 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_steer:
     'BYTE_1_FLAGS': msg_lca_4['BYTE_1_FLAGS'],
     'BYTE_1_NIBBLE_HI': msg_lca_4['BYTE_1_NIBBLE_HI'],
     'BYTE_2_3': msg_lca_4['BYTE_2_3'],
-    'LCA_4_STEER': msg_lca_4['LCA_4_STEER'],
     'YAW_RATE': msg_lca_4['YAW_RATE'],
     'BYTE_6': msg_lca_4['BYTE_6'],
     'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
