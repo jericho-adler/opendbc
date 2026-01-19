@@ -3,14 +3,14 @@
 Automated calibration script for LCA_5_STEER angle_factor.
 
 This script determines the relationship between LCA_5_STEER raw values
-and actual steering angle (from SAS_ANGLE_SENSOR via carState.steeringAngleDeg).
+and actual steering angle (from PSCM_ANGLE_SENSOR via carState.steeringAngleDeg).
 
 Usage:
   1. Start openpilot normally (car on, engaged or ready to engage)
   2. Run this script: python calibrate_angle_factor.py
   3. The script will automatically:
-     - Iterate through LCA_5_STEER raw values
-     - Wait for steering to settle
+     - Iterate through LCA_5_STEER raw values (starting from 0, going both directions)
+     - Wait for steering to settle (detected automatically)
      - Log observed angles
      - Compute and report the angle_factor
 
@@ -24,7 +24,6 @@ Output:
   - Computed angle_factor printed to console
 """
 
-import os
 import sys
 import time
 import signal
@@ -42,20 +41,27 @@ import cereal.messaging as messaging
 # Configuration
 LIVE_TESTING_FILE = "/data/openpilot/live_testing.txt"
 LOG_FILE = "/data/openpilot/angle_factor_calibration.csv"
-SETTLE_TIME_S = 1.5  # Time to wait for steering to settle after changing value
-SAMPLE_COUNT = 20    # Number of angle samples to average per test point
-SAMPLE_INTERVAL_S = 0.05  # 50ms between samples (20Hz)
 
-# Test values for LCA_5_STEER (raw 8-bit values)
-# Start from center, go left, back to center, go right
-DEFAULT_TEST_VALUES = [128, 140, 160, 180, 200, 220, 240, 128, 116, 96, 76, 56, 36, 16, 128]
+# Settling detection parameters
+SETTLE_THRESHOLD_DEG = 0.2   # Angle must be stable within this range
+SETTLE_WINDOW = 15           # Number of samples to check for stability
+SETTLE_TIMEOUT_S = 5.0       # Max time to wait for settling
+SAMPLE_INTERVAL_S = 0.05     # 50ms between samples (20Hz)
+
+# Final sampling after settling
+FINAL_SAMPLE_COUNT = 20      # Number of samples to average for final reading
+
+# Safety limits
+MAX_ANGLE_DEG = 40.0         # Stop if angle exceeds this
+
+# Test values: start at 0, go positive, back to 0, go negative, back to 0
+DEFAULT_TEST_VALUES = [0, 5, 10, 15, 20, 25, 30, 0, -5, -10, -15, -20, -25, -30, 0]
 
 
 class AngleFactorCalibrator:
-  def __init__(self, test_values: list[int], settle_time: float, sample_count: int):
+  def __init__(self, test_values: list[int], max_angle: float):
     self.test_values = test_values
-    self.settle_time = settle_time
-    self.sample_count = sample_count
+    self.max_angle = max_angle
     self.results = []  # List of (raw_value, avg_angle, std_angle) tuples
     self.running = True
 
@@ -87,15 +93,59 @@ lat_active=False
       f.write(content)
     print("Live testing disabled")
 
-  def _sample_steering_angle(self, sm, count: int) -> list[float]:
-    """Collect multiple steering angle samples"""
+  def _get_angle(self, sm) -> float | None:
+    """Get current steering angle from carState"""
+    sm.update(timeout=1000)
+    if sm.updated['carState']:
+      return sm['carState'].steeringAngleDeg
+    return None
+
+  def _wait_for_settle(self, sm) -> bool:
+    """
+    Wait until steering angle stabilizes.
+    Returns True if settled, False if timeout or interrupted.
+    """
+    recent_angles = []
+    start_time = time.time()
+
+    while self.running:
+      # Check timeout
+      if time.time() - start_time > SETTLE_TIMEOUT_S:
+        print(f"  WARNING: Settle timeout after {SETTLE_TIMEOUT_S}s")
+        return False
+
+      # Get current angle
+      angle = self._get_angle(sm)
+      if angle is None:
+        continue
+
+      recent_angles.append(angle)
+
+      # Keep only the last SETTLE_WINDOW samples
+      if len(recent_angles) > SETTLE_WINDOW:
+        recent_angles.pop(0)
+
+      # Check if settled (need full window)
+      if len(recent_angles) >= SETTLE_WINDOW:
+        angle_range = max(recent_angles) - min(recent_angles)
+        if angle_range < SETTLE_THRESHOLD_DEG:
+          elapsed = time.time() - start_time
+          print(f"  Settled in {elapsed:.2f}s (range: {angle_range:.3f}°)")
+          return True
+
+      time.sleep(SAMPLE_INTERVAL_S)
+
+    return False
+
+  def _collect_samples(self, sm, count: int) -> list[float]:
+    """Collect multiple steering angle samples after settling"""
     samples = []
     for _ in range(count):
       if not self.running:
         break
-      sm.update(timeout=1000)
-      if sm.updated['carState']:
-        samples.append(sm['carState'].steeringAngleDeg)
+      angle = self._get_angle(sm)
+      if angle is not None:
+        samples.append(angle)
       time.sleep(SAMPLE_INTERVAL_S)
     return samples
 
@@ -121,7 +171,7 @@ lat_active=False
       log.write("timestamp,raw_value,angle_deg,sample_num\n")
 
       print(f"\nStarting calibration with {len(self.test_values)} test points...")
-      print(f"Settle time: {self.settle_time}s, Samples per point: {self.sample_count}")
+      print(f"Settle threshold: {SETTLE_THRESHOLD_DEG}°, Safety limit: ±{self.max_angle}°")
       print("-" * 60)
 
       for i, raw_value in enumerate(self.test_values):
@@ -134,12 +184,20 @@ lat_active=False
         self._write_live_testing(raw_value)
 
         # Wait for steering to settle
-        print(f"  Waiting {self.settle_time}s for steering to settle...")
-        time.sleep(self.settle_time)
+        print(f"  Waiting for steering to settle...")
+        if not self._wait_for_settle(sm):
+          print(f"  Skipping this point (did not settle)")
+          continue
 
-        # Collect samples
-        print(f"  Collecting {self.sample_count} samples...")
-        samples = self._sample_steering_angle(sm, self.sample_count)
+        # Check safety limit
+        current_angle = self._get_angle(sm)
+        if current_angle is not None and abs(current_angle) > self.max_angle:
+          print(f"  SAFETY: Angle {current_angle:.1f}° exceeds limit ±{self.max_angle}°, stopping!")
+          break
+
+        # Collect final samples
+        print(f"  Collecting {FINAL_SAMPLE_COUNT} samples...")
+        samples = self._collect_samples(sm, FINAL_SAMPLE_COUNT)
 
         if len(samples) < 3:
           print(f"  WARNING: Only got {len(samples)} samples, skipping this point")
@@ -158,6 +216,11 @@ lat_active=False
         # Store result
         self.results.append((raw_value, avg_angle, std_angle))
         print(f"  Result: {avg_angle:.3f}° (±{std_angle:.3f}°)")
+
+    # Return to 0 before disabling
+    print("\nReturning to center (0)...")
+    self._write_live_testing(0)
+    self._wait_for_settle(sm)
 
     # Disable live testing
     self._disable_live_testing()
@@ -182,8 +245,8 @@ lat_active=False
     for raw_val, avg_angle, std_angle in self.results:
       print(f"{raw_val:>12} {avg_angle:>14.3f} {std_angle:>10.3f}")
 
-    # Compute linear regression: angle = factor * (raw - offset)
-    # Using least squares: factor = sum((x-x_mean)*(y-y_mean)) / sum((x-x_mean)^2)
+    # Compute linear regression: angle = slope * raw + intercept
+    # Using least squares
     raw_values = [r[0] for r in self.results]
     angles = [r[1] for r in self.results]
 
@@ -197,23 +260,25 @@ lat_active=False
       print("\nERROR: Cannot compute factor (no variation in raw values)")
       return
 
-    # factor: degrees per raw unit
+    # slope: degrees per raw unit (how many degrees per 1 unit of LCA_5_STEER)
     degrees_per_raw = numerator / denominator
-    offset = angle_mean - degrees_per_raw * raw_mean
+    intercept = angle_mean - degrees_per_raw * raw_mean
 
-    # The angle_factor we need is for: raw = angle_deg * angle_factor
-    # So: angle_factor = 1 / degrees_per_raw
     if abs(degrees_per_raw) < 1e-10:
-      print("\nERROR: Cannot compute factor (degrees_per_raw too small)")
+      print("\nERROR: Cannot compute factor (slope too small)")
       return
 
+    # The angle_factor we need: LCA_5_STEER = angle_deg * angle_factor
+    # If observed relationship is: angle_deg = degrees_per_raw * LCA_5_STEER + intercept
+    # Then: LCA_5_STEER = (angle_deg - intercept) / degrees_per_raw
+    # So: angle_factor = 1 / degrees_per_raw
     angle_factor = 1.0 / degrees_per_raw
 
     print(f"\n{'Linear Fit Results':^40}")
     print("-" * 40)
-    print(f"  Degrees per raw unit: {degrees_per_raw:.6f}")
-    print(f"  Offset (raw=0):       {offset:.3f}°")
-    print(f"  Center point (raw):   {-offset/degrees_per_raw:.1f}")
+    print(f"  Slope (deg per raw unit): {degrees_per_raw:.6f}")
+    print(f"  Intercept:                {intercept:.3f}°")
+    print(f"  (raw=0 should give ~{intercept:.1f}° steering)")
 
     print(f"\n{'COMPUTED ANGLE_FACTOR':^40}")
     print("=" * 40)
@@ -226,29 +291,32 @@ lat_active=False
     current_factor = 0.05596
     print(f"  Current value:  {current_factor}")
     print(f"  Computed value: {angle_factor:.5f}")
-    print(f"  Difference:     {((angle_factor - current_factor) / current_factor * 100):.1f}%")
+    if current_factor != 0:
+      print(f"  Difference:     {((angle_factor - current_factor) / current_factor * 100):.1f}%")
+
+    # Warn if intercept is significant
+    if abs(intercept) > 1.0:
+      print(f"\n  WARNING: Intercept is {intercept:.2f}° (not zero)")
+      print("  This means raw=0 doesn't give 0° steering.")
+      print("  You may need to account for this offset.")
 
     print(f"\nFull log saved to: {LOG_FILE}")
 
 
 def main():
   parser = argparse.ArgumentParser(description='Calibrate LCA_5_STEER angle_factor')
-  parser.add_argument('--settle-time', type=float, default=SETTLE_TIME_S,
-                      help=f'Seconds to wait for steering to settle (default: {SETTLE_TIME_S})')
-  parser.add_argument('--samples', type=int, default=SAMPLE_COUNT,
-                      help=f'Number of samples per test point (default: {SAMPLE_COUNT})')
+  parser.add_argument('--max-angle', type=float, default=MAX_ANGLE_DEG,
+                      help=f'Safety limit - stop if angle exceeds this (default: {MAX_ANGLE_DEG}°)')
   parser.add_argument('--values', type=str, default=None,
                       help='Comma-separated list of raw values to test (default: built-in sequence)')
   parser.add_argument('--quick', action='store_true',
-                      help='Quick mode: fewer test points, shorter settle time')
+                      help='Quick mode: fewer test points')
   args = parser.parse_args()
 
   if args.values:
     test_values = [int(v.strip()) for v in args.values.split(',')]
   elif args.quick:
-    test_values = [128, 180, 220, 128, 76, 36, 128]
-    args.settle_time = 1.0
-    args.samples = 10
+    test_values = [0, 10, 20, 30, 0, -10, -20, -30, 0]
   else:
     test_values = DEFAULT_TEST_VALUES
 
@@ -256,8 +324,7 @@ def main():
   print("LCA_5_STEER Angle Factor Calibration")
   print("=" * 60)
   print(f"Test values: {test_values}")
-  print(f"Settle time: {args.settle_time}s")
-  print(f"Samples per point: {args.samples}")
+  print(f"Safety limit: ±{args.max_angle}°")
   print()
   print("IMPORTANT: Make sure:")
   print("  1. openpilot is running")
@@ -266,7 +333,7 @@ def main():
   print()
   input("Press Enter to start calibration...")
 
-  calibrator = AngleFactorCalibrator(test_values, args.settle_time, args.samples)
+  calibrator = AngleFactorCalibrator(test_values, args.max_angle)
   calibrator.run()
 
 
