@@ -227,6 +227,7 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
     'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
     'NEW_SIGNAL_2': msg_lca_5['NEW_SIGNAL_2'],
+    'LCA_TURN_BITS': msg_lca_5['LCA_TURN_BITS'],
     'LCA_5_STEER': (target_angle_deg * angle_factor) if lat_active else msg_lca_5['LCA_5_STEER'],
     'COUNTER': counter,
   }
