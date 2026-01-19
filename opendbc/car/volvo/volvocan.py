@@ -416,7 +416,6 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_steer:
 
   # When lat_active, force LCA_ENABLE to 3 (PA ON state)
   values = {
-    'BYTE_1': msg_lca_4['BYTE_1'],
     'BYTE_0': msg_lca_4['BYTE_0'],
     'LCA_ENABLE': 3,  # Force bits 0-1 to 1 (value=3 means both bits set)
     'BYTE_1_FLAGS': msg_lca_4['BYTE_1_FLAGS'],
