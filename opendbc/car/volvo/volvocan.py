@@ -199,10 +199,57 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   values['CHECKSUM_2'] = checksum_2_0x69_message(b0, b1, b3, b4)
   return packer.make_can_msg('LCA_2', 2, values)
 
+def encode_lca_angle(target_angle_deg: float) -> tuple[int, int]:
+  """
+  Encode target steering angle to 2-byte (LCA_TURN_BITS, LCA_5_STEER) values.
+
+  Uses 16-bit encoding for fine-grained control (~0.056° per count).
+
+  Args:
+    target_angle_deg: Target angle in degrees (positive = left, negative = right)
+
+  Returns:
+    (lca_turn_bits, lca_5_steer): Tuple of byte values for LCA_5 message
+  """
+  SCALE = 0.05596  # degrees per count
+
+  if target_angle_deg >= 0:
+    # LEFT: lca_turn_bits starts at 128, lca_5_steer goes 0→255, then lca_turn_bits increments
+    left_counts = int(round(target_angle_deg / SCALE))
+    left_counts = max(0, min(0xFFFF, left_counts))
+
+    lca_turn_bits = 128 + (left_counts // 256)
+    lca_5_steer = left_counts % 256
+
+    # Avoid inactive pattern (186, 0)
+    if lca_turn_bits == 186 and lca_5_steer == 0:
+      lca_5_steer = 1
+
+    return (lca_turn_bits, lca_5_steer)
+
+  else:
+    # RIGHT: starts at (255, 255) as zero, decrements
+    right_counts = int(round(-target_angle_deg / SCALE))
+    right_counts = max(0, min(0xFFFF, right_counts))
+
+    lca_turn_bits = 255 - (right_counts // 256)
+    lca_5_steer = 255 - (right_counts % 256)
+
+    # Avoid inactive pattern (186, 0)
+    if lca_turn_bits == 186 and lca_5_steer == 0:
+      right_counts = min(right_counts + 1, 0xFFFF)
+      lca_turn_bits = 255 - (right_counts // 256)
+      lca_5_steer = 255 - (right_counts % 256)
+
+    return (lca_turn_bits, lca_5_steer)
+
+
 def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_lca_5: dict, counter: int,
                          overrides: dict | None = None):
   """
   Create LCA_5 message (0x67) with angle-based steering control.
+
+  Uses 2-byte encoding (LCA_TURN_BITS + LCA_5_STEER) for fine-grained control.
 
   Args:
     packer: CAN packer instance
@@ -215,11 +262,14 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
   Returns:
     CAN message for LCA_5 on bus 2
   """
-  
-  # Calibrated: 1 raw unit ≈ 1 degree (measured slope: 1.005, intercept: ~0)
-  angle_factor = 1.0
 
-  # Build values dictionary (wheel speeds and counter unchanged)
+  if lat_active:
+    lca_turn_bits, lca_5_steer = encode_lca_angle(target_angle_deg)
+  else:
+    lca_turn_bits = msg_lca_5['LCA_TURN_BITS']
+    lca_5_steer = msg_lca_5['LCA_5_STEER']
+
+  # Build values dictionary
   values = {
     'WHEEL_SPEED_1': msg_lca_5['WHEEL_SPEED_1'],
     'NEW_SIGNAL_4': msg_lca_5['NEW_SIGNAL_4'],
@@ -227,7 +277,8 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     'WHEEL_SPEED_2': msg_lca_5['WHEEL_SPEED_2'],
     'NEW_SIGNAL_5': msg_lca_5['NEW_SIGNAL_5'],
     'NEW_SIGNAL_2': msg_lca_5['NEW_SIGNAL_2'],
-    'LCA_5_STEER': (target_angle_deg * angle_factor) if lat_active else msg_lca_5['LCA_5_STEER'],
+    'LCA_TURN_BITS': lca_turn_bits,
+    'LCA_5_STEER': lca_5_steer,
     'COUNTER': counter,
   }
 
