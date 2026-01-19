@@ -481,8 +481,8 @@ def create_lca_7_message(packer, lat_active: bool, msg_lca_7: dict, lca_7_steer:
     'LCA_7_DELTA_STEER': msg_lca_7['LCA_7_DELTA_STEER'],
     'NEW_SIGNAL_1': msg_lca_7['NEW_SIGNAL_1'],
     'NEW_SIGNAL_2': msg_lca_7['NEW_SIGNAL_2'],
-    'NEW_SIGNAL_3': msg_lca_7['NEW_SIGNAL_4'],
-    'NEW_SIGNAL_4': msg_lca_7['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_3': msg_lca_7['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_4': msg_lca_7['NEW_SIGNAL_4'],
   }
 
   # Apply any overrides from live testing config
