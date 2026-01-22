@@ -127,11 +127,15 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
   #if not lat_active:
   #  return packer.make_can_msg('LCA_2', 2, msg_lca_2)
 
+  #values = dict(msg_lca_2)
+
   values = {
     'BYTE_0': 24 if lat_active else msg_lca_2['BYTE_0'], # 24 always
     'COUNTER_1': msg_lca_2['COUNTER_1'], # Byte 1 Low Nibble [5:8] - 4-bit counter that increments by +2 (modulo 16)
     'PILOT_ASSIST_ENGAGED': 1 if lat_active else msg_lca_2['PILOT_ASSIST_ENGAGED'], # Byte 1 [4]
-    'BYTE_1_MSBS_3': msg_lca_2['BYTE_1_MSBS_3'], # Byte 1 [0:3]
+    'BYTE_1_BITFIELD_0': msg_lca_2['BYTE_1_BITFIELD_0'],
+    'ESC_ACTUATING': msg_lca_2['ESC_ACTUATING'],
+    'ESC_ELIGIBLE': msg_lca_2['ESC_ELIGIBLE'],
     'CHECKSUM_2': msg_lca_2['CHECKSUM_2'], # Checksum on bytes 0 and 1
     'NEW_SIGNAL_2': 0 if lat_active else msg_lca_2['NEW_SIGNAL_2'],
     'COUNTER_2': msg_lca_2['COUNTER_2'], # Byte 5 Low Nibble - 4-bit counter that increments by +4 (modulo 16)
@@ -142,26 +146,9 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
     'BYTE_7': 0 if lat_active else msg_lca_2['BYTE_7'],
   }
 
-  def build_bytes(values: dict) -> list[int]:
-    b0 = int(values['BYTE_0']) # Used for checksum 1 and 2
-    b1 = ((int(values['COUNTER_1']) & 0x0F) |
-          ((int(values['PILOT_ASSIST_ENGAGED']) & 0x01) << 4) |
-          ((int(values['BYTE_1_MSBS_3']) & 0x07) << 5))
-    b2 = int(values['CHECKSUM_2']) & 0xFF
-    # NEW_SIGNAL_2 is a 16-bit big-endian value spanning bytes 3-4
-    new_signal_2 = int(values['NEW_SIGNAL_2']) & 0xFFFF
-    b3 = (new_signal_2 >> 8) & 0xFF  # High byte
-    b4 = new_signal_2 & 0xFF          # Low byte
-    # Note: BRAKE_PEDAL_PRESSED_A has scale=-1, offset=1 in DBC, so we need to invert:
-    # raw = (physical - offset) / scale = (physical - 1) / -1
-    brake_pedal_a_raw = int((values['BRAKE_PEDAL_PRESSED_A'] - 1) / -1)
-    b5 = ((int(values['COUNTER_2']) & 0x0F) |
-          ((int(values['NEW_SIGNAL_3']) & 0x03) << 4) |
-          ((int(values['BRAKE_PEDAL_PRESSED_B']) & 0x01) << 6) |
-          ((brake_pedal_a_raw & 0x01) << 7))
-    return [b0, b1, b2, b3, b4, b5]
+  dat = packer.make_can_msg('LCA_2', 2, values)
 
-  built_bytes = build_bytes(values)
+  built_bytes = dat[1]  # dat is (addr, bytes, bus) tuple - extract bytes
   b0 = built_bytes[0]
   b1 = built_bytes[1]
   b2 = built_bytes[2]
@@ -189,7 +176,9 @@ def create_lca_2_message(packer, lat_active: bool, msg_lca_2: dict, counter_1: i
       #assert False
   values['COUNTER_1'] = counter_1
   values['COUNTER_2'] = counter_2
-  built_bytes = build_bytes(values)
+  # Re-pack with updated counters to get correct bytes for checksum calculation
+  dat = packer.make_can_msg('LCA_2', 2, values)
+  built_bytes = dat[1]  # dat is (addr, bytes, bus) tuple - extract bytes
   b0 = built_bytes[0]
   b1 = built_bytes[1]
   b3 = built_bytes[3]
@@ -215,7 +204,7 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
   Returns:
     CAN message for LCA_5 on bus 2
   """
-  
+
   # DBC defines LCA_5_STEER as 15-bit signed with scale 0.05596 deg/count
   # Packer handles the encoding automatically - just pass the angle in degrees
 
@@ -236,24 +225,9 @@ def create_lca_5_message(packer, lat_active: bool, target_angle_deg: float, msg_
     for key, val in overrides.items():
       values[key] = val
 
-  # Build bytes for checksum calculation (unchanged)
-  def build_bytes(vals: dict) -> list[int]:
-    # Byte 0: WHEEL_SPEED_1[6:0] (bits 6-0) + NEW_SIGNAL_4 (bit 7)
-    byte0 = (int(vals['WHEEL_SPEED_1']) & 0x7F) | ((int(vals['NEW_SIGNAL_4']) & 0x01) << 7)
-    # Byte 1: WHEEL_SPEED_1[14:7] (upper 8 bits of 15-bit value)
-    byte1 = (int(vals['WHEEL_SPEED_1']) >> 7) & 0xFF
-    # Byte 3: NEW_SIGNAL_1 (bits 3-0) + COUNTER (bits 7-4)
-    byte3 = (int(vals['NEW_SIGNAL_1']) & 0x0F) | ((int(vals['COUNTER']) & 0x0F) << 4)
-    # Byte 4: WHEEL_SPEED_2[6:0] (bits 6-0) + NEW_SIGNAL_5 (bit 7)
-    byte4 = (int(vals['WHEEL_SPEED_2']) & 0x7F) | ((int(vals['NEW_SIGNAL_5']) & 0x01) << 7)
-    # Byte 5: WHEEL_SPEED_2[14:7] (upper 8 bits of 15-bit value)
-    byte5 = (int(vals['WHEEL_SPEED_2']) >> 7) & 0xFF
-    return [byte0, byte1, byte3, byte4, byte5]
-
-  # Calculate checksum
-  built = build_bytes(values)
-  values['CHECKSUM'] = checksum_lca_5_message(built[0], built[1], built[2], built[3], built[4])
-
+  dat = packer.make_can_msg('LCA_5', 2, values)
+  built_bytes = dat[1]  # dat is (addr, bytes, bus) tuple - extract bytes
+  values['CHECKSUM'] = checksum_lca_5_message(built_bytes[0], built_bytes[1], built_bytes[3], built_bytes[4], built_bytes[5])
   return packer.make_can_msg('LCA_5', 2, values)
 
 def create_speed_message(packer, msg_speed: dict):
@@ -332,10 +306,8 @@ def create_gear_position_message(packer, msg_gear_position: dict):
     packer: CAN packer instance
     msg_gear_position: Dictionary containing GEAR_POSITION message values from car
   """
-  values = {
-    'GEAR_POSITION': msg_gear_position['GEAR_POSITION'], #3,
-    'NEW_SIGNAL_1': msg_gear_position['NEW_SIGNAL_1'],
-  }
+  values = dict(msg_gear_position)
+  values['GEAR_POSITION'] = msg_gear_position['GEAR_POSITION'] # 3
   return packer.make_can_msg('GEAR_POSITION', 2, values)
 
 def create_egsm_message(packer, msg_egsm: dict):

@@ -54,8 +54,8 @@ class CarState(CarStateBase):
     ret.brakePressed = cp_main.vl["LCA_2"]["BRAKE_PEDAL_PRESSED_B"] == 1
     ret.parkingBrake = False # TODO: add parking brake
 
-    # stability control - becomes 3 when ESC intervenes (e.g., aquaplaning)
-    ret.espActive = cp_main.vl["LCA_2"]["BYTE_1_MSBS_3"] == 3
+    # stability control - becomes true when ESC intervenes (e.g., aquaplaning)
+    ret.espActive = cp_main.vl["LCA_2"]["ESC_ACTUATING"] == 1 and cp_main.vl["LCA_2"]["ESC_ELIGIBLE"] == 1
 
     # steering wheel
     ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR'] # openpilot expects a negative value for a right turn

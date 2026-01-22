@@ -105,7 +105,9 @@ BO_ 105 LCA_2: 8 XXX
  SG_ BYTE_0 : 7|8@0+ (1,0) [0|2047] "" XXX
  SG_ COUNTER_1 : 11|4@0+ (1,0) [0|4095] "" XXX
  SG_ PILOT_ASSIST_ENGAGED : 12|1@0+ (1,0) [0|1] "" XXX
- SG_ BYTE_1_MSBS_3 : 15|3@0+ (1,0) [0|7] "" XXX
+ SG_ ESC_ACTUATING : 13|1@0+ (1,0) [0|1] "" XXX
+ SG_ ESC_ELIGIBLE : 14|1@0+ (1,0) [0|1] "" XXX
+ SG_ BYTE_1_BITFIELD_0 : 15|1@0+ (1,0) [0|7] "" XXX
  SG_ CHECKSUM_2 : 23|8@0+ (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_2 : 31|16@0+ (1,0) [0|65535] "" XXX
  SG_ COUNTER_2 : 43|4@0+ (1,0) [0|4095] "" XXX
@@ -116,8 +118,27 @@ BO_ 105 LCA_2: 8 XXX
  SG_ BYTE_7 : 63|8@0+ (1,0) [0|255] "" XXX
 
 BO_ 128 GEAR_POSITION: 8 XXX
- SG_ NEW_SIGNAL_1 : 7|61@0+ (1,0) [0|2.30584300921369e+18] "" XXX
+ SG_ NEW_SIGNAL_3 : 3|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_2 : 4|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_1 : 7|3@0+ (1,0) [0|7] "" XXX
+ SG_ NEW_SIGNAL_5 : 11|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_4 : 15|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_17 : 17|2@0+ (1,0) [0|3] "" XXX
+ SG_ ABS_INTERVENTION_SUSPECT_2 : 18|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_18 : 19|1@0+ (1,0) [0|1] "" XXX
+ SG_ ABS_INTERVENTION_SUSPECT_1 : 20|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_6 : 23|3@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_7 : 24|8@1+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_8 : 39|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_13 : 43|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_10 : 46|3@0+ (1,0) [0|7] "" XXX
+ SG_ NEW_SIGNAL_9 : 47|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_14 : 51|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_12 : 54|3@0+ (1,0) [0|7] "" XXX
+ SG_ NEW_SIGNAL_11 : 55|1@0+ (1,0) [0|1] "" XXX
  SG_ GEAR_POSITION : 58|3@0+ (1,0) [0|7] "" XXX
+ SG_ NEW_SIGNAL_16 : 62|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_15 : 63|1@0+ (1,0) [0|1] "" XXX
 
 BO_ 144 LCA_4: 8 XXX
  SG_ BYTE_0 : 7|8@0+ (1,0) [0|16383] "" XXX
@@ -162,5 +183,6 @@ CM_ SG_ 87 LCA_ACCEPT_COMMANDS_INV "Goes to 0 when PSCM allowed to receive LCA c
 CM_ SG_ 88 LCA_ENABLE_INV "Master enable, active-low";
 CM_ SG_ 103 WHEEL_SPEED_1 "Possible Front Left  (FL)";
 CM_ SG_ 103 WHEEL_SPEED_2 "Possible Front Right (FR)";
-CM_ SG_ 105 BYTE_1_MSBS_3 "Becomes 3 when ESC kicks in; 0 in standard operation";
+CM_ SG_ 105 ESC_ACTUATING "Goes to 1 in combination with ESC_ELIGIBLE when ESC is actively actuating";
+CM_ SG_ 105 ESC_ELIGIBLE "Goes to 1 on e.g. speed bump, but doesn't trigger any intervention";
 VAL_ 128 GEAR_POSITION 0 "Park" 1 "Reverse" 2 "Neutral" 3 "Drive" 4 "B-Mode";
