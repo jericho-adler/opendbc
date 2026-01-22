@@ -29,17 +29,17 @@ class VolvoCarDocs(CarDocs):
 @dataclass
 class VolvoCMAPlatformConfig(PlatformConfig):
   dbc_dict: DbcDict = field(default_factory=lambda: {
-    Bus.pt: 'volvo_front_1_cma',
     Bus.main: 'volvo_mid_1',
     Bus.party: 'volvo_mid_1',
+    Bus.pt: 'volvo_front_1_cma',
   })
-  
+
 @dataclass
 class VolvoSPAPlatformConfig(PlatformConfig):
   dbc_dict: DbcDict = field(default_factory=lambda: {
-    Bus.pt: 'volvo_front_1_spa',
     Bus.main: 'volvo_mid_1',
     Bus.party: 'volvo_mid_1',
+    Bus.pt: 'volvo_front_1_spa',
   })
 
 
