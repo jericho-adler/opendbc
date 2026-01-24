@@ -340,20 +340,22 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
   values['SIG1_BYTE_1_HI_NIBBLE'] = sig1_counter
   values['SIG1_REPLICA_BYTE_2_LO_NIBLE'] = sig1_counter
 
-  b0 = int(values['CHECKSUM_1'])
-  b1 = int(values['SIG1_BYTE_1_HI_NIBBLE']) << 4 | int(values['LCA_ENABLED_ECHO'])
-  b2 = int(values['NEW_SIGNAL_2']) << 4 | int(values['SIG1_REPLICA_BYTE_2_LO_NIBLE'])
-  b3 = int(values['CHECKSUM_2'])
-  b45 = int(values['BYTE_4_5'])
-  b6 = int(values['BYTE_6'])
-  b7 = int(values['BYTE_7'])
+  dat = packer.make_can_msg('PSCM_RELATED', 0, values)
+  built_bytes = dat[1]  # dat is (addr, bytes, bus) tuple - extract bytes
+  b1 = built_bytes[1]
+  b2 = built_bytes[2]
+  b3 = built_bytes[3]
+  b4 = built_bytes[4]
+  b5 = built_bytes[5]
+  b6 = built_bytes[6]
+  b7 = built_bytes[7]
   values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   values['CHECKSUM_2'] = checksum_2_pscm_related_message(b2)
   #assert values['CHECKSUM_1'] == msg_pscm_related['CHECKSUM_1']
   #assert values['CHECKSUM_2'] == msg_pscm_related['CHECKSUM_2']
   if lat_active and not stock_lca_engaged:
     values['LCA_ENABLED_ECHO'] = 0
-    b1 = int(values['SIG1_BYTE_1_HI_NIBBLE']) << 4 | int(values['LCA_ENABLED_ECHO'])
+    b1 = packer.make_can_msg('PSCM_RELATED', 0, values)[1][1]
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
 
