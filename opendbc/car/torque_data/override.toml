@@ -92,6 +92,7 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
 "ACURA_TLX_2G" = [1.2, 1.2, 0.15]
 "PORSCHE_MACAN_MK1" = [2.0, 2.0, 0.2]
 "VOLVO_XC40_RECHARGE" = [1.5, 1.5, 0.1] # Guess TODO: Check
+"VOLVO_S60_RECHARGE" = [1.5, 1.5, 0.1] # Guess TODO: Check
 
 # Dashcam or fallback configured as ideal car
 "MOCK" = [10.0, 10, 0.0]

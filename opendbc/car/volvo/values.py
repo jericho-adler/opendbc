@@ -14,7 +14,7 @@ class CarControllerParams:
 
   # Angle limits for rate limiting
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(
-    390, # deg - max steering angle
+    540, # deg - 1.5 turns to lock
     ([0., 5., 25.], [2.5, 1.5, .2]),  # rate up limits at different speeds
     ([0., 5., 25.], [5., 2., .3]),    # rate down limits at different speeds
   )
@@ -53,14 +53,13 @@ class CAR(Platforms):
       centerToFrontRatio=0.52,
     ),
   )
-  #TODO update car specs
   VOLVO_S60_RECHARGE = VolvoSPAPlatformConfig(
     [VolvoCarDocs("Volvo S60 Recharge 2024")],
     CarSpecs(
-      mass=2170,
-      wheelbase=2.702,
-      steerRatio=15.8,
-      centerToFrontRatio=0.52,
+      mass=2020,
+      wheelbase=2.872,
+      steerRatio=16.2,
+      centerToFrontRatio=0.516,
     ),
   )
 
