@@ -56,7 +56,7 @@ class CAR(Platforms):
   VOLVO_S60_RECHARGE = VolvoSPAPlatformConfig(
     [VolvoCarDocs("Volvo S60 Recharge 2024")],
     CarSpecs(
-      mass=2500,
+      mass=2020,
       wheelbase=2.872,
       steerRatio=16.2,
       centerToFrontRatio=0.516,
