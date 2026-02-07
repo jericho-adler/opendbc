@@ -32,7 +32,7 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
     'LCA_STEER_LOOSELY': 614 if lat_active else 0,
     'NEW_SIGNAL_7': 7,
     'LCA_STEER_LOOSELY_INV': -614 if lat_active else 0,
-    'NEW_SIGNAL_4': 80 if lat_active else 251, # Steering rate - Stock LCA increased from 35 to 39 steppedly when steering request was overriden by openpilot that couldn't steer enough
+    'LCA_RATE_OF_CHANGE': 80 if lat_active else 251, # Steering rate - Stock LCA increased from 35 to 39 steppedly when steering request was overriden by openpilot that couldn't steer enough
     'LCA_STEER': msg_lca['LCA_STEER'],
     'NEW_SIGNAL_6': 15,
   }
