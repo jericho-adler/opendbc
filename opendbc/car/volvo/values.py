@@ -63,6 +63,16 @@ class CAR(Platforms):
     ),
   )
 
+ POLESTAR_2 = VolvoCMAPlatformConfig(
+    [VolvoCarDocs("Polestar 2 2020+")],
+    CarSpecs(
+      mass=2123,
+      wheelbase=2.735,
+      steerRatio=15.8,
+      centerToFrontRatio=0.52,
+    ),
+  )
+
 
 # FW Query configuration for Volvo CMA platform
 # FW_QUERY_CONFIG = FwQueryConfig(
