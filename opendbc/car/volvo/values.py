@@ -53,6 +53,7 @@ class CAR(Platforms):
       centerToFrontRatio=0.52,
     ),
   )
+
   VOLVO_S60_RECHARGE = VolvoSPAPlatformConfig(
     [VolvoCarDocs("Volvo S60 Recharge 2024")],
     CarSpecs(
@@ -63,7 +64,7 @@ class CAR(Platforms):
     ),
   )
 
- POLESTAR_2 = VolvoCMAPlatformConfig(
+  POLESTAR_2 = VolvoCMAPlatformConfig(
     [VolvoCarDocs("Polestar 2 2020+")],
     CarSpecs(
       mass=2123,
@@ -72,7 +73,6 @@ class CAR(Platforms):
       centerToFrontRatio=0.52,
     ),
   )
-
 
 # FW Query configuration for Volvo CMA platform
 # FW_QUERY_CONFIG = FwQueryConfig(
