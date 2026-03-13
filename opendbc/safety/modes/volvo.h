@@ -96,8 +96,8 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
         // CMA: SG_ CRUISE_CONTROL_ENABLED : 56|1@0+ and CRUISE_CONTROL_ENABLED_IDLE_TRAFFIC : 57|1@0+
         cruise_enabled = ((msg->data[7] & 1U) || (msg->data[7] & 2U));
       } else {
-        // SPA: SG_ CRUISE_CONTROL_SPA_ENABLED : 14|7@0+ — byte 1 bits 0-6, non-zero when cruise active
-        cruise_enabled = (msg->data[1] & 0x7FU) != 0U;
+        // SPA: SG_ CRUISE_CONTROL_SPA_ENABLED : 1|1@0+ (-1,1) — byte 0 bit 1, active low
+        cruise_enabled = !((msg->data[0] >> 1) & 1U);
       }
       pcm_cruise_check(cruise_enabled);
     }
