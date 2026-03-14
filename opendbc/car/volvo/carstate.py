@@ -71,8 +71,8 @@ class CarState(CarStateBase):
 
     # cruise - double-tap detection (on-off-on within 500ms/50 frames / 1000ms/100 frames)
     if self.is_spa:
-      # SPA: byte 1 bits 0-6 are non-zero when cruise is active (bit 7 is idle flag)
-      cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_SPA_ENABLED"] > 0
+      # SPA: byte 0 bit 1, inverted (0 = cruise on, 1 = cruise off)
+      cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_SPA_ENABLED"] == 1
     else:
       # CMA: two separate boolean signals
       cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1 or cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED_IDLE_TRAFFIC"] == 1
