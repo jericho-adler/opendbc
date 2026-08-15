@@ -51,7 +51,7 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
   return packer.make_can_msg('LCA', 2, values)
 
 def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, spoof_pa_hands_on_wheel: bool,
-                        hands_on_wheel_a: int, hands_on_wheel_b: int):
+                        hands_on_wheel_a: int | None, hands_on_wheel_b: int | None):
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
@@ -73,7 +73,14 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, spoof_pa_hands
   # value for tens of seconds to minutes (avg frame-to-frame delta ~0.01-0.03
   # counts) -- a 50 Hz square wave between two fixed values never occurs
   # naturally and is suspected to trip PSCM's plausibility check.
-  if lat_active or spoof_pa_hands_on_wheel:
+  #
+  # hands_on_wheel_a/b can be None if carcontroller.py hasn't captured a valid
+  # (nonzero) reading yet -- fall through to the genuine passthrough above
+  # rather than ever sending (0, 0), which a CAN parser that hasn't decoded a
+  # PSCM frame yet returns and which is nowhere near a real sensor value.
+  # Segment 846 latched onto exactly that cold-start (0, 0) read and caused an
+  # immediate cancel instead of the previous ~30s delayed one.
+  if (lat_active or spoof_pa_hands_on_wheel) and hands_on_wheel_a is not None:
     values['HANDS_ON_STEERING_WHEEL_A'] = hands_on_wheel_a
     values['HANDS_ON_STEERING_WHEEL_B'] = hands_on_wheel_b
 
