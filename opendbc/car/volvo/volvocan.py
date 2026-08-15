@@ -50,8 +50,15 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
 
   return packer.make_can_msg('LCA', 2, values)
 
-def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, spoof_pa_hands_on_wheel: bool,
-                        hands_on_wheel_a: int | None, hands_on_wheel_b: int | None):
+def create_pscm_message(packer, msg_pscm: dict):
+  # Pure passthrough of the genuine PSCM message (bus 2 -> 0), no hands-on-wheel
+  # override, to isolate whether spoofing HANDS_ON_STEERING_WHEEL_A/B is what
+  # causes the occasional cancel. HANDS_ON_STEERING_WHEEL_A is actually an
+  # elapsed-time counter since the last confirmed hands-on event (climbs ~+4
+  # every ~0.86s, saturates ~252, resets to ~195), not a static reading -- both
+  # the square-wave and held-value spoofs sent something a real counter never
+  # produces. Forwarding truth sidesteps that entirely; the driver clears the
+  # dash's "hands on wheel" warning manually instead.
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
@@ -62,27 +69,6 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, spoof_pa_hands
     'BYTE_6': msg_pscm['BYTE_6'],
     'BYTE_7': msg_pscm['BYTE_7'],
   }
-
-  # Spoof hands on wheel when:
-  # - lat_active (openpilot is steering), OR
-  # - spoof_pa_hands_on_wheel (Pilot Assist is engaged AND toggle enabled)
-  #
-  # Hold a steady value captured from the genuine sensor (see carcontroller.py)
-  # instead of alternating between two fixed bytes every frame. Route analysis
-  # of real HANDS_ON_STEERING_WHEEL_A/B traffic showed the sensor sits at one
-  # value for tens of seconds to minutes (avg frame-to-frame delta ~0.01-0.03
-  # counts) -- a 50 Hz square wave between two fixed values never occurs
-  # naturally and is suspected to trip PSCM's plausibility check.
-  #
-  # hands_on_wheel_a/b can be None if carcontroller.py hasn't captured a valid
-  # (nonzero) reading yet -- fall through to the genuine passthrough above
-  # rather than ever sending (0, 0), which a CAN parser that hasn't decoded a
-  # PSCM frame yet returns and which is nowhere near a real sensor value.
-  # Segment 846 latched onto exactly that cold-start (0, 0) read and caused an
-  # immediate cancel instead of the previous ~30s delayed one.
-  if (lat_active or spoof_pa_hands_on_wheel) and hands_on_wheel_a is not None:
-    values['HANDS_ON_STEERING_WHEEL_A'] = hands_on_wheel_a
-    values['HANDS_ON_STEERING_WHEEL_B'] = hands_on_wheel_b
 
   return packer.make_can_msg('PSCM', 0, values)
 

@@ -29,11 +29,6 @@ class CarController(CarControllerBase):
     # Counter management for PSCM_RELATED
     self.pscm_related_counter = None  # Will grab initial value from CarState
 
-    # Hands-on-wheel spoof for PSCM (0x16) - held steady, grabbed from the
-    # genuine sensor on first use. See create_pscm_message in volvocan.py.
-    self.hands_on_wheel_a = None
-    self.hands_on_wheel_b = None
-
     # Counter management for LCA_3 (pattern-based)
     self.lca_3_counter_sync = LCA3CounterSync()
 
@@ -213,24 +208,8 @@ class CarController(CarControllerBase):
                                           overrides=lca_overrides))
       self.apply_angle_last = apply_angle
 
-      # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
-      spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 128)
-      spoof_pa_hands = CS.pilot_assist_engaged and spoof_pa_hands_enabled
-      # Grab a steady "hands on wheel" reading from the genuine sensor once,
-      # instead of synthesizing a square wave every frame (see volvocan.py).
-      # Retry every frame until we see a nonzero reading: a CAN parser that
-      # hasn't decoded a PSCM frame yet returns (0, 0), and latching onto that
-      # cold-start default (segment 846) sent an implausible reading PSCM has
-      # never actually seen, causing an immediate cancel.
-      if self.hands_on_wheel_a is None:
-        a = CS.msg_pscm['HANDS_ON_STEERING_WHEEL_A']
-        b = CS.msg_pscm['HANDS_ON_STEERING_WHEEL_B']
-        if a != 0 or b != 0:
-          self.hands_on_wheel_a = a
-          self.hands_on_wheel_b = b
       # PSCM (bus 2 -> 0) - 0x16 - 100 Hz
-      can_sends.append(create_pscm_message(self.packer, lat_active, CS.msg_pscm, spoof_pa_hands,
-                                            self.hands_on_wheel_a, self.hands_on_wheel_b))
+      can_sends.append(create_pscm_message(self.packer, CS.msg_pscm))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 
