@@ -50,7 +50,8 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
 
   return packer.make_can_msg('LCA', 2, values)
 
-def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, spoof_pa_hands_on_wheel: bool):
+def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, spoof_pa_hands_on_wheel: bool,
+                        hands_on_wheel_a: int, hands_on_wheel_b: int):
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
@@ -65,11 +66,16 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, sp
   # Spoof hands on wheel when:
   # - lat_active (openpilot is steering), OR
   # - spoof_pa_hands_on_wheel (Pilot Assist is engaged AND toggle enabled)
+  #
+  # Hold a steady value captured from the genuine sensor (see carcontroller.py)
+  # instead of alternating between two fixed bytes every frame. Route analysis
+  # of real HANDS_ON_STEERING_WHEEL_A/B traffic showed the sensor sits at one
+  # value for tens of seconds to minutes (avg frame-to-frame delta ~0.01-0.03
+  # counts) -- a 50 Hz square wave between two fixed values never occurs
+  # naturally and is suspected to trip PSCM's plausibility check.
   if lat_active or spoof_pa_hands_on_wheel:
-    #values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
-    #values['DRIVER_INPUT_DEVIATION'] = 1 if frame % 2 == 0 else 0
-    values['HANDS_ON_STEERING_WHEEL_B'] = 186 if frame % 2 == 0 else 154 # msg_pscm['HANDS_ON_STEERING_WHEEL_B']
-    values['HANDS_ON_STEERING_WHEEL_A'] = 195 if frame % 2 == 0 else 249 # msg_pscm['HANDS_ON_STEERING_WHEEL_A']
+    values['HANDS_ON_STEERING_WHEEL_A'] = hands_on_wheel_a
+    values['HANDS_ON_STEERING_WHEEL_B'] = hands_on_wheel_b
 
   return packer.make_can_msg('PSCM', 0, values)
 
