@@ -50,7 +50,7 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
 
   return packer.make_can_msg('LCA', 2, values)
 
-def create_pscm_message(packer, msg_pscm: dict, spoof_hands_on_wheel: bool, hands_on_wheel_timer: int):
+def create_pscm_message(packer, msg_pscm: dict, spoof_hands_on_wheel: bool):
   """
   Forward the genuine PSCM message (bus 2 -> 0), optionally overriding the
   hands-on-wheel alert timer/flags pair to keep PSCM from showing the
@@ -59,13 +59,24 @@ def create_pscm_message(packer, msg_pscm: dict, spoof_hands_on_wheel: bool, hand
   HANDS_ON_WHEEL_ALERT_TIMER is not a static reading -- it's an elapsed-time
   counter since the last confirmed hands-on event: 0 = hands on, 1-13 counts
   up roughly once a second, 14 = warning displayed, 15 = alert displayed
-  (see CM_ comment in volvo_mid_1.dbc). HANDS_ON_WHEEL_ALERT_FLAGS is "Follow
-  Timer" (3) whenever the timer is ticking normally, so the two must be sent
-  as a consistent pair -- overriding one without the other produces a
-  combination the real signal never shows. hands_on_wheel_timer is computed
-  by carcontroller.py as a synthetic ramp-and-reset counter that mimics the
-  genuine shape (see route_analysis: resets observed every 8-36s in healthy
-  drives, well before the timer would otherwise reach the 14/15 thresholds).
+  (see CM_ comment in volvo_mid_1.dbc). A prior synthetic ramp-and-reset
+  version (mimicking the genuine climb-then-reset shape) still produced
+  dash warnings in testing -- resetting on a perfectly fixed ~10s cadence,
+  forever, is itself an implausible pattern a real driver's hand
+  repositioning would never produce.
+
+  Simpler and more conservative: hold TIMER=0 ("hands on, right now")
+  permanently rather than ever letting it ramp. 0 is the one value a real
+  counter can legitimately sit at indefinitely, for as long as the
+  condition it represents (hands on wheel) stays true -- unlike a frozen
+  non-zero value, which looks like a stuck/dead sensor. Message freshness
+  is independently proven by other fields (PSCM_RELATED's SIG1 counter,
+  PSCM_ANGLE_SENSOR itself moving), so a static TIMER=0 doesn't imply a
+  stale frame the way freezing the old HANDS_ON_STEERING_WHEEL_A byte did.
+
+  HANDS_ON_WHEEL_ALERT_FLAGS must stay paired with TIMER: 0 ("LCA not
+  active") pairs with TIMER=15, everything else pairs with TIMER=0. Since
+  we only ever send FLAGS=3 ("Follow Timer") here, TIMER=0 always follows.
   """
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
@@ -83,8 +94,8 @@ def create_pscm_message(packer, msg_pscm: dict, spoof_hands_on_wheel: bool, hand
   }
 
   if spoof_hands_on_wheel:
-    values['HANDS_ON_WHEEL_ALERT_TIMER'] = hands_on_wheel_timer
     values['HANDS_ON_WHEEL_ALERT_FLAGS'] = 3  # Follow Timer
+    values['HANDS_ON_WHEEL_ALERT_TIMER'] = 0 if values['HANDS_ON_WHEEL_ALERT_FLAGS'] != 0 else 15
 
   return packer.make_can_msg('PSCM', 0, values)
 
