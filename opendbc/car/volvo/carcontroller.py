@@ -8,6 +8,12 @@ from opendbc.car.volvo.live_testing import LiveTestingManager
 from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_lca_6_message, create_lca_7_message, create_speed_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
 
+# Synthetic HANDS_ON_WHEEL_ALERT_TIMER shape (see create_pscm_message in
+# volvocan.py): +1 every HANDS_ON_WHEEL_TICK_FRAMES, wraps back to 0 every
+# HANDS_ON_WHEEL_RESET_FRAMES.
+HANDS_ON_WHEEL_TICK_FRAMES = 86    # ~0.86s per +1 @ 100Hz, matches genuine rate
+HANDS_ON_WHEEL_RESET_FRAMES = 1000  # reset every ~10s
+
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
@@ -28,6 +34,9 @@ class CarController(CarControllerBase):
 
     # Counter management for PSCM_RELATED
     self.pscm_related_counter = None  # Will grab initial value from CarState
+
+    # Synthetic hands-on-wheel timer frame counter (see create_pscm_message)
+    self.hands_on_wheel_frame = 0
 
     # Counter management for LCA_3 (pattern-based)
     self.lca_3_counter_sync = LCA3CounterSync()
@@ -208,8 +217,19 @@ class CarController(CarControllerBase):
                                           overrides=lca_overrides))
       self.apply_angle_last = apply_angle
 
+      # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
+      spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 128)
+      spoof_hands_on_wheel = lat_active or (CS.pilot_assist_engaged and spoof_pa_hands_enabled)
+
+      # Synthetic hands-on-wheel timer: ramps like the genuine
+      # HANDS_ON_WHEEL_ALERT_TIMER (+1 roughly every 0.86s) and resets to 0
+      # every ~10s -- comfortably inside the 8-36s reset cadence observed in
+      # healthy drives, well short of the 14/15 (warning/alert) thresholds.
+      self.hands_on_wheel_frame = (self.hands_on_wheel_frame + 1) % HANDS_ON_WHEEL_RESET_FRAMES
+      hands_on_wheel_timer = self.hands_on_wheel_frame // HANDS_ON_WHEEL_TICK_FRAMES
+
       # PSCM (bus 2 -> 0) - 0x16 - 100 Hz
-      can_sends.append(create_pscm_message(self.packer, CS.msg_pscm))
+      can_sends.append(create_pscm_message(self.packer, CS.msg_pscm, spoof_hands_on_wheel, hands_on_wheel_timer))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 

@@ -50,25 +50,41 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
 
   return packer.make_can_msg('LCA', 2, values)
 
-def create_pscm_message(packer, msg_pscm: dict):
-  # Pure passthrough of the genuine PSCM message (bus 2 -> 0), no hands-on-wheel
-  # override, to isolate whether spoofing HANDS_ON_STEERING_WHEEL_A/B is what
-  # causes the occasional cancel. HANDS_ON_STEERING_WHEEL_A is actually an
-  # elapsed-time counter since the last confirmed hands-on event (climbs ~+4
-  # every ~0.86s, saturates ~252, resets to ~195), not a static reading -- both
-  # the square-wave and held-value spoofs sent something a real counter never
-  # produces. Forwarding truth sidesteps that entirely; the driver clears the
-  # dash's "hands on wheel" warning manually instead.
+def create_pscm_message(packer, msg_pscm: dict, spoof_hands_on_wheel: bool, hands_on_wheel_timer: int):
+  """
+  Forward the genuine PSCM message (bus 2 -> 0), optionally overriding the
+  hands-on-wheel alert timer/flags pair to keep PSCM from showing the
+  "hands on wheel" warning while openpilot is steering.
+
+  HANDS_ON_WHEEL_ALERT_TIMER is not a static reading -- it's an elapsed-time
+  counter since the last confirmed hands-on event: 0 = hands on, 1-13 counts
+  up roughly once a second, 14 = warning displayed, 15 = alert displayed
+  (see CM_ comment in volvo_mid_1.dbc). HANDS_ON_WHEEL_ALERT_FLAGS is "Follow
+  Timer" (3) whenever the timer is ticking normally, so the two must be sent
+  as a consistent pair -- overriding one without the other produces a
+  combination the real signal never shows. hands_on_wheel_timer is computed
+  by carcontroller.py as a synthetic ramp-and-reset counter that mimics the
+  genuine shape (see route_analysis: resets observed every 8-36s in healthy
+  drives, well before the timer would otherwise reach the 14/15 thresholds).
+  """
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
-    'HANDS_ON_STEERING_WHEEL_A': msg_pscm['HANDS_ON_STEERING_WHEEL_A'],
-    'HANDS_ON_STEERING_WHEEL_B': msg_pscm['HANDS_ON_STEERING_WHEEL_B'],
+    'HANDS_ON_WHEEL_ALERT_TIMER': msg_pscm['HANDS_ON_WHEEL_ALERT_TIMER'],
+    'HANDS_ON_WHEEL_ALERT_FLAGS': msg_pscm['HANDS_ON_WHEEL_ALERT_FLAGS'],
+    'PADDING': msg_pscm['PADDING'],
+    'FAST_TIMER': msg_pscm['FAST_TIMER'],
+    'NEW_SIGNAL_3': msg_pscm['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_4': msg_pscm['NEW_SIGNAL_4'],
+    'NEW_SIGNAL_5': msg_pscm['NEW_SIGNAL_5'],
     'BYTE_4': msg_pscm['BYTE_4'],
     'DRIVER_INPUT_DEVIATION': msg_pscm['DRIVER_INPUT_DEVIATION'],
-    'BYTE_6': msg_pscm['BYTE_6'],
     'BYTE_7': msg_pscm['BYTE_7'],
   }
+
+  if spoof_hands_on_wheel:
+    values['HANDS_ON_WHEEL_ALERT_TIMER'] = hands_on_wheel_timer
+    values['HANDS_ON_WHEEL_ALERT_FLAGS'] = 3  # Follow Timer
 
   return packer.make_can_msg('PSCM', 0, values)
 
