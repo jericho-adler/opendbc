@@ -3,7 +3,6 @@ import numpy as np
 from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.live_testing import LiveTestingManager
 from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_lca_6_message, create_lca_7_message, create_speed_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
@@ -38,8 +37,8 @@ class CarController(CarControllerBase):
     # Synthetic hands-on-wheel timer frame counter (see create_pscm_message)
     self.hands_on_wheel_frame = 0
 
-    # Counter management for LCA_3 (pattern-based)
-    self.lca_3_counter_sync = LCA3CounterSync()
+    # Counter management for LCA_3
+    self.lca_3_counter = None  # Will grab initial value from CarState
 
     # Counter management for LCA_5 (formerly SPEED_1)
     self.lca_5_counter = None  # Will grab initial value from CarState
@@ -249,11 +248,20 @@ class CarController(CarControllerBase):
     # 0x57 at ~66.67 Hz: send on 2 out of every 3 frames
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
-      # Update counter with observed value, get counter to send
-      counter, is_synced = self.lca_3_counter_sync.update(CS.msg_lca_3['COUNTER_1'])
-      can_sends.append(create_lca_3_message(self.packer, lat_active, apply_angle, CS.msg_lca_3, counter))
-      #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
-      pass
+      # Counter management for LCA_3 (2-bit, wraps 0-3 per the DBC). Grab the
+      # initial value from CarState once, then increment purely internally --
+      # same pattern as LCA_2/PSCM_RELATED/LCA_5. Previously this re-read
+      # CS.msg_lca_3['COUNTER_1'] every cycle (bus 0, a mix of the genuine
+      # broadcast and our own forwarded frame looping back), sampled at our
+      # own ~66.67Hz send rate against a faster-changing source: route
+      # analysis found 61% of sends didn't match the most-recently-observed
+      # value, 39% of bus0 arrivals were never relayed, and hundreds of
+      # resends held a stale value while bus0 had already moved on. Counting
+      # our own sequence removes that skip/resend behavior entirely.
+      if self.lca_3_counter is None:
+        self.lca_3_counter = CS.msg_lca_3['COUNTER_1']
+      self.lca_3_counter = (self.lca_3_counter + 1) % 4
+      can_sends.append(create_lca_3_message(self.packer, lat_active, apply_angle, CS.msg_lca_3, self.lca_3_counter))
 
     # SPEED messages - 0x60, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
