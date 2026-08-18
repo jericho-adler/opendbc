@@ -205,6 +205,7 @@ struct CarState {
   vehicleSensorsInvalid @52 :Bool;  # invalid steering angle readings, etc.
   lowSpeedAlert @56 :Bool;  # lost steering control due to a dynamic min steering speed
   blockPcmEnable @60 :Bool;  # whether to allow PCM to enable this frame
+  madsActive @61 :Bool;  # brand-specific: openpilot lateral control active while stock ACC is off; suppresses pedal disengage
 
   # cruise state
   cruiseState @10 :CruiseState;

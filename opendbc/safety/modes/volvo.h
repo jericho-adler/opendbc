@@ -5,6 +5,14 @@
 // safetyParam: 0 = CMA (XC40 Recharge), 1 = SPA (S60 Recharge, Polestar 2)
 #define VOLVO_FLAG_SPA 1U
 
+// alternative_experience bit for MADS (must match selfdrive/car/card.py). Not part of the
+// shared ALT_EXP_* enum in declarations.h since this is a Volvo-only fork feature.
+#define VOLVO_ALT_EXP_MADS 256
+
+// MADS entry window: cruise button off->on->off must complete within this many
+// microseconds to arm MADS. Mirrors MADS_ENTRY_WINDOW_FRAMES in carstate.py (50 frames @ 100Hz)
+#define VOLVO_MADS_ENTRY_WINDOW_US 500000U
+
 // Volvo CAN message addresses shared between CMA and SPA
 #define VOLVO_LCA_STEER           0x58U    // TX from VCU1 to PSCM, LCA steering command (0x58)
 #define VOLVO_LCA_2               0x69U   // RX from BCM, brake pedal, cruise state
@@ -47,6 +55,13 @@
 // Runtime addresses set by volvo_init based on safetyParam
 static uint16_t volvo_ecm_1_addr;
 static uint16_t volvo_bus1_cruise_control_addr;
+
+// MADS state (mirrors the entry/exit state machine in carstate.py so that the hardware
+// safety layer independently reaches the same controls_allowed decision as openpilot)
+static bool volvo_mads_active = false;
+static bool volvo_mads_seen_rising = false;
+static bool volvo_cruise_prev = false;
+static uint32_t volvo_mads_rising_ts = 0U;
 
 static void volvo_rx_hook(const CANPacket_t *msg) {
   // Basic vehicle state monitoring - very relaxed implementation
@@ -98,7 +113,36 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
         // SPA: SG_ CRUISE_CONTROL_SPA_ENABLED : 1|1@0+ (-1,1) — byte 0 bit 1, active low
         cruise_enabled = !((msg->data[0] >> 1) & 1U);
       }
-      pcm_cruise_check(cruise_enabled);
+
+      if ((alternative_experience & VOLVO_ALT_EXP_MADS) != 0) {
+        bool rising = cruise_enabled && !volvo_cruise_prev;
+        bool falling = !cruise_enabled && volvo_cruise_prev;
+        uint32_t ts = microsecond_timer_get();
+        if (!volvo_mads_active) {
+          if (rising) {
+            volvo_mads_rising_ts = ts;
+            volvo_mads_seen_rising = true;
+          } else if (falling && volvo_mads_seen_rising && ((ts - volvo_mads_rising_ts) <= VOLVO_MADS_ENTRY_WINDOW_US)) {
+            volvo_mads_active = true;
+          } else {
+            // no state change: normal press, outside the entry window
+          }
+        } else if (falling) {
+          // any off->on->off tap while active disarms MADS, even if it looks like a fresh entry tap
+          volvo_mads_active = false;
+        } else {
+          // single on tap while active: stay armed
+        }
+        volvo_cruise_prev = cruise_enabled;
+      } else {
+        volvo_mads_active = false;
+        volvo_cruise_prev = cruise_enabled;
+      }
+
+      // while MADS is active, the driver drives gas/brake themselves without disengaging
+      mads_brake_override = volvo_mads_active;
+
+      pcm_cruise_check(cruise_enabled || volvo_mads_active);
     }
   }
 

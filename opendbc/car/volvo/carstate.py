@@ -14,6 +14,10 @@ SPEED_TO_MS = 0.003977
 GAS_IDLE_CMA = 20
 GAS_IDLE_SPA = 0
 
+# MADS entry window: cruise button off->on->off must complete within this many
+# frames (@ 100Hz CC_frame) to arm MADS. 50 frames = 0.5s
+MADS_ENTRY_WINDOW_FRAMES = 50
+
 
 class CarState(CarStateBase):
   def __init__(self, CP):
@@ -22,6 +26,8 @@ class CarState(CarStateBase):
     self.cruise_enabled_prev = False
     self.cruise_last_disabled_frame = 0
     self.cruise_double_tap_active = False
+    self.mads_active = False
+    self.mads_last_rising_frame = -MADS_ENTRY_WINDOW_FRAMES * 1000
     self.gas_pressed_prev = False
     self.CC_frame = 0 # CarController frame
     self.dispatch_lca_2_msg = False
@@ -105,10 +111,30 @@ class CarState(CarStateBase):
         self.cruise_last_disabled_frame = self.CC_frame
         self.cruise_double_tap_active = False
 
-    # cruiseState.enabled always reflects raw car state (must match panda safety)
+    # MADS: tap the cruise button off->on->off within MADS_ENTRY_WINDOW_FRAMES to let
+    # openpilot keep steering while stock ACC (tied to cruise_raw) drops back off. Once
+    # armed, a single off->on tap is tolerated (stays armed); the next on->off tap disarms it.
+    mads_enabled = bool(self.CP.alternativeExperience & 256)
+    if mads_enabled:
+      cruise_rising = cruise_raw and not self.cruise_enabled_prev
+      cruise_falling = not cruise_raw and self.cruise_enabled_prev
+      if not self.mads_active:
+        if cruise_rising:
+          self.mads_last_rising_frame = self.CC_frame
+        elif cruise_falling and self.CC_frame - self.mads_last_rising_frame <= MADS_ENTRY_WINDOW_FRAMES:
+          self.mads_active = True
+      elif cruise_falling:
+        self.mads_active = False
+    else:
+      self.mads_active = False
+
+    # cruiseState.enabled reflects raw car state, latched on by MADS so openpilot keeps
+    # steering after the entry tap drops stock ACC back off (must still match panda safety
+    # for the raw signal; MADS only ever adds True on top of it)
     # blockPcmEnable prevents openpilot engagement until double-tap detected
-    ret.cruiseState.enabled = cruise_raw
+    ret.cruiseState.enabled = cruise_raw or self.mads_active
     ret.blockPcmEnable = use_double_tap and not self.cruise_double_tap_active
+    ret.madsActive = self.mads_active
 
     self.cruise_enabled_prev = cruise_raw
     self.gas_pressed_prev = ret.gasPressed

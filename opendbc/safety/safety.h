@@ -52,6 +52,7 @@ bool regen_braking_prev = false;
 bool steering_disengage;
 bool steering_disengage_prev;
 bool cruise_engaged_prev = false;
+bool mads_brake_override = false;  // brand-specific: suppress the generic brake-press controls cutout (Volvo MADS only)
 struct sample_t vehicle_speed;
 bool vehicle_moving = false;
 bool acc_main_on = false;  // referred to as "ACC off" in ISO 15622:2018
@@ -343,7 +344,7 @@ static void generic_rx_checks(void) {
   gas_pressed_prev = gas_pressed;
 
   // exit controls on rising edge of brake press
-  if (brake_pressed && (!brake_pressed_prev || vehicle_moving)) {
+  if (brake_pressed && (!brake_pressed_prev || vehicle_moving) && !mads_brake_override) {
     controls_allowed = false;
   }
   brake_pressed_prev = brake_pressed;
@@ -426,6 +427,7 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
   steering_disengage = false;
   steering_disengage_prev = false;
   cruise_engaged_prev = false;
+  mads_brake_override = false;
   vehicle_moving = false;
   acc_main_on = false;
   cruise_button_prev = 0;

@@ -258,6 +258,7 @@ extern bool regen_braking_prev;
 extern bool steering_disengage;
 extern bool steering_disengage_prev;
 extern bool cruise_engaged_prev;
+extern bool mads_brake_override;  // brand-specific: suppress the generic brake-press controls cutout (Volvo MADS only)
 extern struct sample_t vehicle_speed;
 extern bool vehicle_moving;
 extern bool acc_main_on; // referred to as "ACC off" in ISO 15622:2018
